@@ -1,0 +1,41 @@
+name: Verify published checklist
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/verify-guide.yml']
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Test reporting reference model
+        run: python tests/model_test.py
+      - name: Verify live Pages files match the reviewed source
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from urllib.request import Request, urlopen
+          import hashlib, os, time
+          base = 'https://andsuch-mods.github.io/General-AI-Test-Space-7/'
+          for name in ['index.html', 'manifest.webmanifest', 'sw.js', 'downloads/CSI_Core_Legacy.scl', 'downloads/CSI_Core_1500.scl']:
+              expected = Path(name).read_bytes()
+              for attempt in range(12):
+                  try:
+                      request = Request(base + name + '?verify=' + os.environ['GITHUB_SHA'], headers={'User-Agent': 'Machine-reporting-deployment-check'})
+                      with urlopen(request, timeout=20) as response:
+                          actual = response.read()
+                          assert response.status == 200, response.status
+                      assert actual == expected, 'Published content differs from the repository'
+                      print('PASS HTTP 200 exact match:', name, len(actual), hashlib.sha256(actual).hexdigest())
+                      break
+                  except Exception as exc:
+                      if attempt == 11:
+                          raise
+                      print('Retry:', name, str(exc))
+                      time.sleep(10)
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as f:
+              f.write('Live Pages returned HTTP 200 with exact repository content for the HTML, manifest, service worker and both SCL core references.\n\nReporting model: 23 checks passed. No Siemens compilation or PLC test was performed.\n')
+          PY
