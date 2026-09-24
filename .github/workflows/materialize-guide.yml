@@ -1,0 +1,44 @@
+name: Materialize reviewed checklist
+on:
+  push:
+    branches: [main]
+    paths: ['_bootstrap/ready']
+permissions:
+  contents: write
+jobs:
+  unpack:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Verify and unpack the reviewed app
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path, PurePosixPath
+          import base64, hashlib, io, lzma, tarfile
+          parts = sorted(Path('_bootstrap').glob('part*.b64'))
+          assert len(parts) == 4, 'Expected four package parts'
+          encoded = ''.join(p.read_text().strip() for p in parts)
+          packed = base64.b64decode(encoded, validate=True)
+          assert hashlib.sha256(packed).hexdigest() == '23914101b026e22825465c9c2900d0e51f9074edc8afda09ec22ae477c524c5f', 'Package hash mismatch'
+          assert Path('README.md').read_text() == '# General-AI-Test-Space-7\nGeneral-AI-Test-Space-7\n', 'Starter repository changed; refusing to replace it'
+          archive = tarfile.open(fileobj=io.BytesIO(lzma.decompress(packed)), mode='r:')
+          members = archive.getmembers()
+          for m in members:
+              p = PurePosixPath(m.name)
+              assert m.isfile() and not p.is_absolute() and '..' not in p.parts and m.size < 1000000, 'Invalid package entry'
+              assert not Path(m.name).exists() or m.name == 'README.md', 'Refusing to replace an existing project file'
+          for m in members:
+              p = Path(m.name)
+              p.parent.mkdir(parents=True, exist_ok=True)
+              p.write_bytes(archive.extractfile(m).read())
+          print('Materialized', len(members), 'reviewed app files')
+          PY
+          python tests/model_test.py
+      - name: Commit the readable app and reference sources
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html app.js style.css content.json schema.json build_content.py build_scl.py build_html.py manifest.webmanifest icon.svg sw.js README.md AGENTS.md downloads tests
+          git commit -m 'Publish machine reporting guide, source references and tests'
+          git push
