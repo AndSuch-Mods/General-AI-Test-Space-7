@@ -1,0 +1,21 @@
+{
+  "passed": 15,
+  "checks": [
+    "84 independent checklist tasks rendered",
+    "Completion moves only its machine task",
+    "Progress counter updates",
+    "Completion survives serialized-state rehydration",
+    "Notes and configuration survive serialized-state rehydration",
+    "Restoring returns task to original group and order",
+    "Kepware map uses chosen DB number",
+    "CSV quotes addresses containing commas",
+    "Expanding instruction preserves summary position",
+    "Collapsing instruction preserves summary position",
+    "Completing task preserves next-row anchor",
+    "Export includes independent notes and progress",
+    "Source download contains code and disabled default",
+    "No browser JavaScript exceptions",
+    "Mobile layout has no horizontal page overflow"
+  ],
+  "scope": "Chromium desktop/mobile using injected document and a storage test double because container browser navigation is policy-blocked. State serialization, DOM and layout tested; live navigation, native localStorage persistence and service-worker lifecycle not tested here. No PLC execution."
+}

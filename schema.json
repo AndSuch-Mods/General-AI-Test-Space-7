@@ -1,0 +1,314 @@
+[
+  {
+    "name": "SchemaVersion",
+    "type": "DInt",
+    "initial": "1",
+    "offset": 0,
+    "description": "Export layout version; must be 1",
+    "kepware": "Long"
+  },
+  {
+    "name": "Heartbeat",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 4,
+    "description": "Changes while the monitor executes; not proof of robot communication",
+    "kepware": "Long"
+  },
+  {
+    "name": "MonitorState",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 8,
+    "description": "0 unqualified, 1 waiting/between, 2 cycle active",
+    "kepware": "Long"
+  },
+  {
+    "name": "CurrentShift",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 12,
+    "description": "0 gap or invalid clock; 1 day; 2 night",
+    "kepware": "Long"
+  },
+  {
+    "name": "CyclesThisHour",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 16,
+    "description": "Completed cycles in the current calendar hour",
+    "kepware": "Long"
+  },
+  {
+    "name": "CyclesPreviousHour",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 20,
+    "description": "Last observed closed hour; use its key and partial flag",
+    "kepware": "Long"
+  },
+  {
+    "name": "Shift1Current",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 24,
+    "description": "Current/latest day-shift running count",
+    "kepware": "Long"
+  },
+  {
+    "name": "Shift1Previous",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 28,
+    "description": "Most recently closed day-shift count",
+    "kepware": "Long"
+  },
+  {
+    "name": "Shift2Current",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 32,
+    "description": "Current/latest night-shift running count",
+    "kepware": "Long"
+  },
+  {
+    "name": "Shift2Previous",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 36,
+    "description": "Most recently closed night-shift count",
+    "kepware": "Long"
+  },
+  {
+    "name": "PreviousCycleSeconds",
+    "type": "Real",
+    "initial": "0.0",
+    "offset": 40,
+    "description": "Held duration of the last valid completed cycle",
+    "kepware": "Float"
+  },
+  {
+    "name": "BetweenCycleSeconds",
+    "type": "Real",
+    "initial": "0.0",
+    "offset": 44,
+    "description": "Live waiting duration after a known completion; check BetweenActive",
+    "kepware": "Float"
+  },
+  {
+    "name": "PreviousBetweenSeconds",
+    "type": "Real",
+    "initial": "0.0",
+    "offset": 48,
+    "description": "Held waiting duration captured at the next accepted start",
+    "kepware": "Float"
+  },
+  {
+    "name": "CycleSeconds",
+    "type": "Real",
+    "initial": "0.0",
+    "offset": 52,
+    "description": "Live active-cycle duration, diagnostic",
+    "kepware": "Float"
+  },
+  {
+    "name": "ThisHourKey",
+    "type": "DInt",
+    "initial": "-1",
+    "offset": 56,
+    "description": "Days since 1990-01-01 multiplied by 24, plus local hour",
+    "kepware": "Long"
+  },
+  {
+    "name": "PreviousHourKey",
+    "type": "DInt",
+    "initial": "-1",
+    "offset": 60,
+    "description": "Identity of the held hour; -1 means no held hour",
+    "kepware": "Long"
+  },
+  {
+    "name": "Shift1Day",
+    "type": "DInt",
+    "initial": "-1",
+    "offset": 64,
+    "description": "Day-shift start date, days since 1990-01-01",
+    "kepware": "Long"
+  },
+  {
+    "name": "Shift1PreviousDay",
+    "type": "DInt",
+    "initial": "-1",
+    "offset": 68,
+    "description": "Held day-shift start date; -1 means none",
+    "kepware": "Long"
+  },
+  {
+    "name": "Shift2Day",
+    "type": "DInt",
+    "initial": "-1",
+    "offset": 72,
+    "description": "Night-shift START date, including after midnight",
+    "kepware": "Long"
+  },
+  {
+    "name": "Shift2PreviousDay",
+    "type": "DInt",
+    "initial": "-1",
+    "offset": 76,
+    "description": "Held night-shift start date; -1 means none",
+    "kepware": "Long"
+  },
+  {
+    "name": "PreviousCycleValid",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 80,
+    "description": "1 once a valid completion has populated the held cycle",
+    "kepware": "Long"
+  },
+  {
+    "name": "PreviousBetweenValid",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 84,
+    "description": "1 once a known interval has been captured",
+    "kepware": "Long"
+  },
+  {
+    "name": "ThisHourPartial",
+    "type": "DInt",
+    "initial": "1",
+    "offset": 88,
+    "description": "1 means this hour is incomplete or uncertain",
+    "kepware": "Long"
+  },
+  {
+    "name": "PreviousHourPartial",
+    "type": "DInt",
+    "initial": "1",
+    "offset": 92,
+    "description": "1 means held hour is not a complete trusted hour",
+    "kepware": "Long"
+  },
+  {
+    "name": "Shift1Partial",
+    "type": "DInt",
+    "initial": "1",
+    "offset": 96,
+    "description": "Day-shift current completeness flag",
+    "kepware": "Long"
+  },
+  {
+    "name": "Shift1PreviousPartial",
+    "type": "DInt",
+    "initial": "1",
+    "offset": 100,
+    "description": "Held day-shift completeness flag",
+    "kepware": "Long"
+  },
+  {
+    "name": "Shift2Partial",
+    "type": "DInt",
+    "initial": "1",
+    "offset": 104,
+    "description": "Night-shift current completeness flag",
+    "kepware": "Long"
+  },
+  {
+    "name": "Shift2PreviousPartial",
+    "type": "DInt",
+    "initial": "1",
+    "offset": 108,
+    "description": "Held night-shift completeness flag",
+    "kepware": "Long"
+  },
+  {
+    "name": "SignalsValid",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 112,
+    "description": "Input/robot communication qualification supplied by site logic",
+    "kepware": "Long"
+  },
+  {
+    "name": "ClockValid",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 116,
+    "description": "Valid local calendar supplied by clock adapter",
+    "kepware": "Long"
+  },
+  {
+    "name": "CycleActive",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 120,
+    "description": "1 while a qualified cycle is being observed",
+    "kepware": "Long"
+  },
+  {
+    "name": "BetweenActive",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 124,
+    "description": "1 while live between-cycle duration is known",
+    "kepware": "Long"
+  },
+  {
+    "name": "TimingFault",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 128,
+    "description": "Latched restart/tick discontinuity or elapsed-counter saturation",
+    "kepware": "Long"
+  },
+  {
+    "name": "TotalCompleted",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 132,
+    "description": "All accepted completed cycles, including gap/clock-unassigned",
+    "kepware": "Long"
+  },
+  {
+    "name": "GapCompleted",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 136,
+    "description": "Completions in 06:00\u201306:30 gap",
+    "kepware": "Long"
+  },
+  {
+    "name": "ClockUnassigned",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 140,
+    "description": "Completions while local clock unavailable",
+    "kepware": "Long"
+  },
+  {
+    "name": "ClockReview",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 144,
+    "description": "Latched invalid clock/discontinuity; review period completeness",
+    "kepware": "Long"
+  },
+  {
+    "name": "CounterSaturated",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 148,
+    "description": "A reporting counter reached DINT maximum; never wraps",
+    "kepware": "Long"
+  },
+  {
+    "name": "ObserverEnable",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 152,
+    "description": "Commissioning enable: default 0; ONLY set this new DB field to 1 after review",
+    "kepware": "Long"
+  }
+]

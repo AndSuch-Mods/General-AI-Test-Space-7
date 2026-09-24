@@ -1,0 +1,27 @@
+CALL RECIPE, NOT A SOURCE FILE TO IMPORT OVER OB1
+
+1. Add the call to CSI_Clock at the approved end of OB1.
+2. Map verified existing conditions INTO the new CSI_IO fields:
+   CloseCommand, RobotPermit, ProductionMode, SignalsValid, AbortCycle.
+3. Insert CSI_CycleMonitor as an FB call; TIA creates a new unused single-instance DB.
+   Enable       = CSI_IO.EnableRun
+   Before the call, calculate CSI_IO.EnableRun from CSI_Report.ObserverEnable = 1.
+   Restart      = CSI_IO.StartupPending
+   CloseCommand = CSI_IO.CloseCommand
+   RobotPermit  = CSI_IO.RobotPermit
+   ProductionMode = CSI_IO.ProductionMode
+   SignalsValid = CSI_IO.SignalsValid
+   AbortCycle   = CSI_IO.AbortCycle
+   TickMs       = CSI_IO.TickMs
+   ClockOK      = CSI_IO.ClockOK
+   DaySerial    = CSI_IO.DaySerial
+   MinuteOfDay  = CSI_IO.MinuteOfDay
+   Second       = CSI_IO.Second
+4. AFTER that call, write FALSE to CSI_IO.StartupPending.
+5. In the applicable existing startup OB(s), append a write of TRUE to CSI_IO.StartupPending.
+   Do not overwrite the existing startup program. Confirm CPU startup modes.
+6. ObserverEnable stays 0 until compilation, mapping and commissioning checks are complete.
+
+No motion, output, robot-permission, existing counter, safety or hardware configuration is written.
+New block names are examples; verify they are unused before source generation.
+Core + correct adapter requires actual TIA compilation and online validation.

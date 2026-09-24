@@ -1,0 +1,29 @@
+{
+  "passed": 23,
+  "checks": [
+    "Gregorian day-number arithmetic checked against datetime for 2400 dates",
+    "Leap-day validity",
+    "Shift half-open boundaries and gap",
+    "Night shift stays assigned to its start date",
+    "Monotonic counter wrap",
+    "Startup-high input does not start or complete",
+    "Permit already true does not immediately complete",
+    "Repeat close edge does not restart active timing",
+    "One completion captures duration and increments once",
+    "Between-cycle timer keeps running in idle manual mode",
+    "Next start captures held between duration",
+    "Abort keeps old held values and does not count",
+    "Boundary 17:00 completion credited to new hour/shift",
+    "Boundary 06:00 completion credited to new hour/shift",
+    "Boundary 06:30 completion credited to new hour/shift",
+    "Boundary 10:00 completion credited to new hour/shift",
+    "Boundary 00:00 completion credited to new hour/shift",
+    "17:00 stores shift1 without crediting boundary completion to it",
+    "Communication loss/recovery cannot create false completion",
+    "Restart drops incomplete interval without a count",
+    "Same-scan next start captures zero gap after completion",
+    "Backward clock keeps total but avoids overwriting prior hour",
+    "Cycle duration survives normal tick wrap"
+  ],
+  "scope": "Independent Python reference-model checks, not execution or compilation of Siemens SCL. TIA compiler, target instruction support, retention, communication qualification and real machine signals remain unvalidated."
+}

@@ -1,0 +1,24 @@
+﻿// REVIEW REFERENCE ONLY: not compiled in TIA or tested on a machine.
+// New standard reporting blocks only. Never replace existing OBs or F-blocks.
+// Assign unused block numbers in TIA; verify absolute report offsets after compile.
+// Configure retention on the actual CPU. ObserverEnable defaults to zero.
+
+FUNCTION "CSI_Clock" : Void
+VERSION : 0.1
+VAR_TEMP
+    stamp : DTL;
+    rc : Int;
+END_VAR
+BEGIN
+    "CSI_IO".TickMs := TIME_TO_DINT(TIME_TCK());
+    #rc := RD_LOC_T(OUT => #stamp);
+    "CSI_IO".ClockStatus := #rc;
+    "CSI_IO".ClockOK := (#rc = 0) OR (#rc = 1); // 1 = daylight-saving time, not failure.
+    IF "CSI_IO".ClockOK THEN
+        "CSI_IO".DaySerial := "CSI_DayNumber"(Year := UINT_TO_INT(#stamp.YEAR),
+            Month := USINT_TO_INT(#stamp.MONTH), Day := USINT_TO_INT(#stamp.DAY));
+        "CSI_IO".MinuteOfDay := USINT_TO_INT(#stamp.HOUR) * 60 + USINT_TO_INT(#stamp.MINUTE);
+        "CSI_IO".Second := USINT_TO_INT(#stamp.SECOND);
+        "CSI_IO".ClockOK := ("CSI_IO".DaySerial >= 0);
+    END_IF;
+END_FUNCTION

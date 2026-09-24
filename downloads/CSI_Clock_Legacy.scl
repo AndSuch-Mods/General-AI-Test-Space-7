@@ -1,0 +1,39 @@
+﻿// REVIEW REFERENCE ONLY: not compiled in TIA or tested on a machine.
+// New standard reporting blocks only. Never replace existing OBs or F-blocks.
+// Assign unused block numbers in TIA; verify absolute report offsets after compile.
+// Configure retention on the actual CPU. ObserverEnable defaults to zero.
+
+FUNCTION "CSI_Clock" : Void
+VERSION : 0.1
+VAR_TEMP
+    stamp : Date_And_Time;
+    octets AT stamp : Array[0..7] of Byte;
+    decoded : Array[0..5] of Int;
+    rc : Int;
+    i : Int;
+    n : Int;
+    yr : Int;
+    validBCD : Bool;
+END_VAR
+BEGIN
+    // Verify READ_CLK (SFC1), TIME_TCK (SFC64) and AT syntax with target F1 help.
+    "CSI_IO".TickMs := TIME_TO_DINT(TIME_TCK());
+    #rc := READ_CLK(CDT => #stamp);
+    "CSI_IO".ClockStatus := #rc;
+    "CSI_IO".ClockOK := (#rc = 0);
+    IF "CSI_IO".ClockOK THEN
+        #validBCD := TRUE;
+        FOR #i := 0 TO 5 DO
+            #n := BYTE_TO_INT(#octets[#i]);
+            IF ((#n / 16) > 9) OR ((#n MOD 16) > 9) THEN #validBCD := FALSE; END_IF;
+            #decoded[#i] := (#n / 16) * 10 + (#n MOD 16);
+        END_FOR;
+        #yr := #decoded[0];
+        IF #yr >= 90 THEN #yr := #yr + 1900; ELSE #yr := #yr + 2000; END_IF;
+        "CSI_IO".DaySerial := "CSI_DayNumber"(Year := #yr, Month := #decoded[1], Day := #decoded[2]);
+        "CSI_IO".MinuteOfDay := #decoded[3] * 60 + #decoded[4];
+        "CSI_IO".Second := #decoded[5];
+        "CSI_IO".ClockOK := #validBCD AND ("CSI_IO".DaySerial >= 0)
+            AND (#decoded[3] < 24) AND (#decoded[4] < 60) AND (#decoded[5] < 60);
+    END_IF;
+END_FUNCTION
