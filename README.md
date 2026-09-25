@@ -1,42 +1,25 @@
-# Machine reporting checklist
-
-Field guide for MM4, MM5 and MM6 production reporting in Siemens TIA Portal and Kepware.
+# Machine checklist
 
 Live app: https://andsuch-mods.github.io/General-AI-Test-Space-7/
 
-The app contains 13 expandable instruction topics, 84 independent checklist tasks, mirrored Completed folders, local notes, export/import of progress, and per-machine Kepware address references. It never connects to a PLC or uploads notes.
+25 short steps for MM4, MM5, MM6 and Kepware. Open **How** under a step for the exact TIA or Kepware clicks. MM6 has 11 monitoring/import/install/check steps. Getting-online tutorials and the long goal explanations have been removed.
 
-## Use
+The current MM6 download is `downloads/MM6_Reporting_V2.scl`, unchanged from the provided V2 package. Importing it creates the CSI2 reporting tags and logic. It is not compiled in TIA or tested on a PLC. ProductionEligible, RobotDataValid and AbortCycle remain unverified machine mappings. Do not enable until those are resolved. MM4/MM5 do not silently inherit the 1500-specific MM6 source.
 
-Open `index.html` in a browser, or use the Pages app. Progress is stored in that browser only. Export it before clearing browser storage or moving computers. A supported browser can cache the Pages version for offline use. Resources also provides a standalone HTML download and the reference SCL files.
+## Progress
 
-## Commissioning limits
+Current steps move into matching Completed folders and can be restored by unchecking. Browser data stays local. Export/import transfers it between computers. Existing v1 storage is left untouched. Matching monitoring checks migrate; retired checks/notes/configuration remain under Earlier checklist records and in exports. New MM6 V2 install tasks start unchecked, and its new report DB number is not inherited from the old CSI_Report field.
 
-Reference source is **not compiled in TIA and not tested on a PLC**. Use the installed V15/V16 target help, verify all machine inputs, compile the additions and review the load preview. The observer starts disabled. No machine-specific automatic, communication-valid or abort bit has been guessed. New reporting data only; do not change motion, robot permission, F-logic or existing DB layouts.
+## Rebuild and test
 
-MM4/MM5 signal notes derive from the V15 PF1000723 analysis. MM6 derives from the V16 PF1000825 analysis. The live configuration must be checked, particularly MM6's hydraulic selector and robot-input naming conflict. Customer project archives are not stored here.
-
-Shift 1 is 06:30–17:00; shift 2 is 17:00–06:00 the next day. The 06:00–06:30 gap remains unassigned. Count completion in the period containing the finish. Between-cycle waiting is not general machine downtime, and scan-based elapsed counters do not measure CPU STOP/power-off time.
-
-## Rebuild
-
-Python 3 standard library is sufficient:
-
-```sh
-python build_content.py
-python build_scl.py
+```
 python build_html.py
-python tests/model_test.py
+python tests/v2_model_test.py
+python tests/checklist_test.py
 ```
 
-`build_content.py` owns the instructions, tasks and flat export schema. `build_scl.py` generates the legacy and 1500 core/clock references. `app.js` and `style.css` provide interaction and layout. `build_html.py` embeds everything, including source downloads, into `index.html`.
+`checklist_data.py` owns the short instructions and stable task IDs. `app.js` and `style.css` own the UI. `schema_v2.json` is checked against the unchanged V2 SCL. `build_html.py` embeds the guide, UI and source download into index.html. The older build_scl.py and legacy source downloads are retained in repository history/files, but are not used by this page or its deployment. Do not regenerate V2 from that old builder.
 
-After changing cached content, update the cache version in the service-worker text in `build_html.py`, then rebuild. Preserve localStorage task IDs to keep user progress compatible.
+Browser tests require Playwright and Chromium. CI requires real localhost navigation and tests native persistence, import, cached offline reload, and unchanged source downloads. Restricted local test environments can use the injected-document fallback, explicitly reported in test results. Reference-model tests do not compile or execute Siemens SCL.
 
-## Tests
-
-`tests/model-results.json`: 23 checks on an independent Python reference model, including 2,400 calendar arithmetic samples. This does not execute or compile Siemens SCL.
-
-`tests/browser-results.json`: 15 Chromium layout/DOM/state checks. The testing container blocks browser navigation, so these used injected documents and a storage test double. Actual native localStorage persistence, service-worker lifecycle and live PLC behavior were not validated by those tests.
-
-The page includes official Siemens/PTC reference links. Installed target-version help and the real download preview take precedence over generic newer online documentation.
+The publishing workflow builds/tests the page, commits generated files, publishes only the page/manifest/service worker/current source, then checks the live files byte-for-byte. No machine archives or credentials are published.

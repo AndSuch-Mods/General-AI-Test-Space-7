@@ -1,0 +1,482 @@
+[
+  {
+    "name": "SchemaVersion",
+    "type": "DInt",
+    "initial": "2",
+    "offset": 0,
+    "description": "Layout version; must read 2.",
+    "kepware_type": "Long"
+  },
+  {
+    "name": "Heartbeat",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 4,
+    "description": "Changes once per cyclic call; use client staleness checks.",
+    "kepware_type": "Long"
+  },
+  {
+    "name": "MonitorState",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 8,
+    "description": "0 disabled/invalid; 10 synchronizing; 20 between cycles; 30 cycle active.",
+    "kepware_type": "Long"
+  },
+  {
+    "name": "CurrentShift",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 12,
+    "description": "0 gap or invalid clock; 1 day; 2 night.",
+    "kepware_type": "Long"
+  },
+  {
+    "name": "CyclesThisHour",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 16,
+    "description": "Completed measured cycles in the current clock hour.",
+    "kepware_type": "Long"
+  },
+  {
+    "name": "CyclesPreviousHour",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 20,
+    "description": "Last observed closed hour; inspect its key and partial flag.",
+    "kepware_type": "Long"
+  },
+  {
+    "name": "Shift1Current",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 24,
+    "description": "Running/latest shift 1 count; resets at its next 06:30 start.",
+    "kepware_type": "Long"
+  },
+  {
+    "name": "Shift1Previous",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 28,
+    "description": "Last observed closed shift 1.",
+    "kepware_type": "Long"
+  },
+  {
+    "name": "Shift2Current",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 32,
+    "description": "Running/latest shift 2 count; does NOT reset at midnight.",
+    "kepware_type": "Long"
+  },
+  {
+    "name": "Shift2Previous",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 36,
+    "description": "Last observed closed shift 2.",
+    "kepware_type": "Long"
+  },
+  {
+    "name": "PreviousCycleSeconds",
+    "type": "Real",
+    "initial": "0.0",
+    "offset": 40,
+    "description": "Held duration from accepted closing start through robot return.",
+    "kepware_type": "Float"
+  },
+  {
+    "name": "BetweenCycleSeconds",
+    "type": "Real",
+    "initial": "0.0",
+    "offset": 44,
+    "description": "Live known gap; only current when BetweenActive=1.",
+    "kepware_type": "Float"
+  },
+  {
+    "name": "PreviousBetweenSeconds",
+    "type": "Real",
+    "initial": "0.0",
+    "offset": 48,
+    "description": "Held gap captured at the next accepted start.",
+    "kepware_type": "Float"
+  },
+  {
+    "name": "CycleSeconds",
+    "type": "Real",
+    "initial": "0.0",
+    "offset": 52,
+    "description": "Live measured cycle, diagnostic only.",
+    "kepware_type": "Float"
+  },
+  {
+    "name": "ThisHourKeyUTC",
+    "type": "DInt",
+    "initial": "-1",
+    "offset": 56,
+    "description": "UTC day serial since 1990-01-01 * 24 + UTC hour; identifies repeated DST hours.",
+    "kepware_type": "Long"
+  },
+  {
+    "name": "PreviousHourKeyUTC",
+    "type": "DInt",
+    "initial": "-1",
+    "offset": 60,
+    "description": "Key for CyclesPreviousHour; -1 means no history.",
+    "kepware_type": "Long"
+  },
+  {
+    "name": "Shift1Day",
+    "type": "DInt",
+    "initial": "-1",
+    "offset": 64,
+    "description": "Start date serial since 1990-01-01 for Shift1Current.",
+    "kepware_type": "Long"
+  },
+  {
+    "name": "Shift1PreviousDay",
+    "type": "DInt",
+    "initial": "-1",
+    "offset": 68,
+    "description": "Start date serial for Shift1Previous.",
+    "kepware_type": "Long"
+  },
+  {
+    "name": "Shift2Day",
+    "type": "DInt",
+    "initial": "-1",
+    "offset": 72,
+    "description": "START date serial for Shift2Current, including after midnight.",
+    "kepware_type": "Long"
+  },
+  {
+    "name": "Shift2PreviousDay",
+    "type": "DInt",
+    "initial": "-1",
+    "offset": 76,
+    "description": "START date serial for Shift2Previous.",
+    "kepware_type": "Long"
+  },
+  {
+    "name": "PreviousCycleValid",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 80,
+    "description": "1 when a complete measured cycle populated the held value.",
+    "kepware_type": "Long"
+  },
+  {
+    "name": "PreviousBetweenValid",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 84,
+    "description": "1 when a known gap populated the held value.",
+    "kepware_type": "Long"
+  },
+  {
+    "name": "ThisHourPartial",
+    "type": "DInt",
+    "initial": "1",
+    "offset": 88,
+    "description": "1 = incomplete/uncertain current hour.",
+    "kepware_type": "Long"
+  },
+  {
+    "name": "PreviousHourPartial",
+    "type": "DInt",
+    "initial": "1",
+    "offset": 92,
+    "description": "1 = incomplete/uncertain held hour.",
+    "kepware_type": "Long"
+  },
+  {
+    "name": "Shift1Partial",
+    "type": "DInt",
+    "initial": "1",
+    "offset": 96,
+    "description": "1 = incomplete/uncertain running/latest day shift.",
+    "kepware_type": "Long"
+  },
+  {
+    "name": "Shift1PreviousPartial",
+    "type": "DInt",
+    "initial": "1",
+    "offset": 100,
+    "description": "1 = incomplete/uncertain held day shift.",
+    "kepware_type": "Long"
+  },
+  {
+    "name": "Shift2Partial",
+    "type": "DInt",
+    "initial": "1",
+    "offset": 104,
+    "description": "1 = incomplete/uncertain running/latest night shift.",
+    "kepware_type": "Long"
+  },
+  {
+    "name": "Shift2PreviousPartial",
+    "type": "DInt",
+    "initial": "1",
+    "offset": 108,
+    "description": "1 = incomplete/uncertain held night shift.",
+    "kepware_type": "Long"
+  },
+  {
+    "name": "SignalsValid",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 112,
+    "description": "Verified robot/input communication qualification, supplied by caller.",
+    "kepware_type": "Long"
+  },
+  {
+    "name": "ClockValid",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 116,
+    "description": "1 = local and UTC calendar usable for this scan.",
+    "kepware_type": "Long"
+  },
+  {
+    "name": "CycleActive",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 120,
+    "description": "1 only in state 30.",
+    "kepware_type": "Long"
+  },
+  {
+    "name": "BetweenActive",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 124,
+    "description": "1 only in state 20; gap is known.",
+    "kepware_type": "Long"
+  },
+  {
+    "name": "TimingFault",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 128,
+    "description": "Latched tick discontinuity or duration saturation.",
+    "kepware_type": "Long"
+  },
+  {
+    "name": "TotalCompleted",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 132,
+    "description": "All complete measured cycles since initialization; not a lifetime production total.",
+    "kepware_type": "Long"
+  },
+  {
+    "name": "GapCompleted",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 136,
+    "description": "Completions during 06:00 through 06:29:59 local.",
+    "kepware_type": "Long"
+  },
+  {
+    "name": "ClockUnassigned",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 140,
+    "description": "Measured completions not assigned to periods because clock was invalid.",
+    "kepware_type": "Long"
+  },
+  {
+    "name": "ClockReview",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 144,
+    "description": "Latched invalid/discontinuous calendar.",
+    "kepware_type": "Long"
+  },
+  {
+    "name": "CounterSaturated",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 148,
+    "description": "A DINT reporting counter reached its maximum; it never wraps negative.",
+    "kepware_type": "Long"
+  },
+  {
+    "name": "ObserverEnabled",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 152,
+    "description": "Status: setup enabled, wiring reviewed and expected configuration present.",
+    "kepware_type": "Long"
+  },
+  {
+    "name": "CyclesToday",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 156,
+    "description": "Local CALENDAR day, midnight to midnight.",
+    "kepware_type": "Long"
+  },
+  {
+    "name": "CyclesPreviousDay",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 160,
+    "description": "Last observed closed calendar day.",
+    "kepware_type": "Long"
+  },
+  {
+    "name": "TodayKeyLocal",
+    "type": "DInt",
+    "initial": "-1",
+    "offset": 164,
+    "description": "Current local date serial since 1990-01-01.",
+    "kepware_type": "Long"
+  },
+  {
+    "name": "PreviousDayKeyLocal",
+    "type": "DInt",
+    "initial": "-1",
+    "offset": 168,
+    "description": "Date serial for CyclesPreviousDay.",
+    "kepware_type": "Long"
+  },
+  {
+    "name": "TodayPartial",
+    "type": "DInt",
+    "initial": "1",
+    "offset": 172,
+    "description": "1 = incomplete/uncertain current day.",
+    "kepware_type": "Long"
+  },
+  {
+    "name": "PreviousDayPartial",
+    "type": "DInt",
+    "initial": "1",
+    "offset": 176,
+    "description": "1 = incomplete/uncertain held day.",
+    "kepware_type": "Long"
+  },
+  {
+    "name": "LocalDateYYYYMMDD",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 180,
+    "description": "Readable current PLC local date.",
+    "kepware_type": "Long"
+  },
+  {
+    "name": "LocalTimeHHMMSS",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 184,
+    "description": "Readable current PLC local time; e.g. 63000 means 06:30:00.",
+    "kepware_type": "Long"
+  },
+  {
+    "name": "CurrentHourLocalLabel",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 188,
+    "description": "YYYYMMDDHH label, e.g. 2026092817; key UTC distinguishes repeated DST hour.",
+    "kepware_type": "Long"
+  },
+  {
+    "name": "PreviousHourLocalLabel",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 192,
+    "description": "Local label for held hour.",
+    "kepware_type": "Long"
+  },
+  {
+    "name": "PartialObservationsSkipped",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 196,
+    "description": "Synchronization boundaries/aborted active observations not counted as complete cycles.",
+    "kepware_type": "Long"
+  },
+  {
+    "name": "IgnoredCloseEdges",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 200,
+    "description": "Additional closing edges ignored while the current measured cycle was active.",
+    "kepware_type": "Long"
+  },
+  {
+    "name": "RestartEvents",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 204,
+    "description": "First-call/startup-reset events observed.",
+    "kepware_type": "Long"
+  },
+  {
+    "name": "ConfigurationOK",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 208,
+    "description": "Expected MM6 Servo and EUROMAP selectors both true.",
+    "kepware_type": "Long"
+  },
+  {
+    "name": "ProductionMode",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 212,
+    "description": "Verified production-eligibility input supplied by caller; setup/jog is excluded.",
+    "kepware_type": "Long"
+  },
+  {
+    "name": "AbortActive",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 216,
+    "description": "Verified observation-abort input supplied by caller.",
+    "kepware_type": "Long"
+  },
+  {
+    "name": "CloseCommand",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 220,
+    "description": "Snapshot of MM6 DB98.DBX112.7.",
+    "kepware_type": "Long"
+  },
+  {
+    "name": "RobotPermit",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 224,
+    "description": "Snapshot of MM6 DB94.DBX29.6.",
+    "kepware_type": "Long"
+  },
+  {
+    "name": "Synchronized",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 228,
+    "description": "1 after a qualified robot low-to-high boundary has been observed.",
+    "kepware_type": "Long"
+  },
+  {
+    "name": "LastCycleEndDate",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 232,
+    "description": "Local YYYYMMDD at last measured completion; 0 if clock unavailable.",
+    "kepware_type": "Long"
+  },
+  {
+    "name": "LastCycleEndTime",
+    "type": "DInt",
+    "initial": "0",
+    "offset": 236,
+    "description": "Local HHMMSS at last measured completion; inspect LastCycleEndDate for validity.",
+    "kepware_type": "Long"
+  }
+]

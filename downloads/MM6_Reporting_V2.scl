@@ -1,0 +1,598 @@
+﻿// MM6 production reporting, revision 2, 2026-09-25.
+// ENGINEERING REFERENCE. Not TIA-compiled or machine-tested.
+// New standard blocks only. Generate in a reviewed OFFLINE copy first.
+// This source never assigns to existing machine bits or outputs.
+// Choose unused block numbers. CSI2 names must not already be occupied.
+// Retention and the applicable startup OB call must be configured in TIA.
+// Schedule is plant local time; calendar day is midnight to midnight.
+
+DATA_BLOCK "CSI2_Report"
+{ S7_Optimized_Access := 'FALSE' }
+VERSION : 2.0
+VAR
+    SchemaVersion : DInt := 2; // byte 0: Layout version; must read 2.
+    Heartbeat : DInt := 0; // byte 4: Changes once per cyclic call; use client staleness checks.
+    MonitorState : DInt := 0; // byte 8: 0 disabled/invalid; 10 synchronizing; 20 between cycles; 30 cycle active.
+    CurrentShift : DInt := 0; // byte 12: 0 gap or invalid clock; 1 day; 2 night.
+    CyclesThisHour : DInt := 0; // byte 16: Completed measured cycles in the current clock hour.
+    CyclesPreviousHour : DInt := 0; // byte 20: Last observed closed hour; inspect its key and partial flag.
+    Shift1Current : DInt := 0; // byte 24: Running/latest shift 1 count; resets at its next 06:30 start.
+    Shift1Previous : DInt := 0; // byte 28: Last observed closed shift 1.
+    Shift2Current : DInt := 0; // byte 32: Running/latest shift 2 count; does NOT reset at midnight.
+    Shift2Previous : DInt := 0; // byte 36: Last observed closed shift 2.
+    PreviousCycleSeconds : Real := 0.0; // byte 40: Held duration from accepted closing start through robot return.
+    BetweenCycleSeconds : Real := 0.0; // byte 44: Live known gap; only current when BetweenActive=1.
+    PreviousBetweenSeconds : Real := 0.0; // byte 48: Held gap captured at the next accepted start.
+    CycleSeconds : Real := 0.0; // byte 52: Live measured cycle, diagnostic only.
+    ThisHourKeyUTC : DInt := -1; // byte 56: UTC day serial since 1990-01-01 * 24 + UTC hour; identifies repeated DST hours.
+    PreviousHourKeyUTC : DInt := -1; // byte 60: Key for CyclesPreviousHour; -1 means no history.
+    Shift1Day : DInt := -1; // byte 64: Start date serial since 1990-01-01 for Shift1Current.
+    Shift1PreviousDay : DInt := -1; // byte 68: Start date serial for Shift1Previous.
+    Shift2Day : DInt := -1; // byte 72: START date serial for Shift2Current, including after midnight.
+    Shift2PreviousDay : DInt := -1; // byte 76: START date serial for Shift2Previous.
+    PreviousCycleValid : DInt := 0; // byte 80: 1 when a complete measured cycle populated the held value.
+    PreviousBetweenValid : DInt := 0; // byte 84: 1 when a known gap populated the held value.
+    ThisHourPartial : DInt := 1; // byte 88: 1 = incomplete/uncertain current hour.
+    PreviousHourPartial : DInt := 1; // byte 92: 1 = incomplete/uncertain held hour.
+    Shift1Partial : DInt := 1; // byte 96: 1 = incomplete/uncertain running/latest day shift.
+    Shift1PreviousPartial : DInt := 1; // byte 100: 1 = incomplete/uncertain held day shift.
+    Shift2Partial : DInt := 1; // byte 104: 1 = incomplete/uncertain running/latest night shift.
+    Shift2PreviousPartial : DInt := 1; // byte 108: 1 = incomplete/uncertain held night shift.
+    SignalsValid : DInt := 0; // byte 112: Verified robot/input communication qualification, supplied by caller.
+    ClockValid : DInt := 0; // byte 116: 1 = local and UTC calendar usable for this scan.
+    CycleActive : DInt := 0; // byte 120: 1 only in state 30.
+    BetweenActive : DInt := 0; // byte 124: 1 only in state 20; gap is known.
+    TimingFault : DInt := 0; // byte 128: Latched tick discontinuity or duration saturation.
+    TotalCompleted : DInt := 0; // byte 132: All complete measured cycles since initialization; not a lifetime production total.
+    GapCompleted : DInt := 0; // byte 136: Completions during 06:00 through 06:29:59 local.
+    ClockUnassigned : DInt := 0; // byte 140: Measured completions not assigned to periods because clock was invalid.
+    ClockReview : DInt := 0; // byte 144: Latched invalid/discontinuous calendar.
+    CounterSaturated : DInt := 0; // byte 148: A DINT reporting counter reached its maximum; it never wraps negative.
+    ObserverEnabled : DInt := 0; // byte 152: Status: setup enabled, wiring reviewed and expected configuration present.
+    CyclesToday : DInt := 0; // byte 156: Local CALENDAR day, midnight to midnight.
+    CyclesPreviousDay : DInt := 0; // byte 160: Last observed closed calendar day.
+    TodayKeyLocal : DInt := -1; // byte 164: Current local date serial since 1990-01-01.
+    PreviousDayKeyLocal : DInt := -1; // byte 168: Date serial for CyclesPreviousDay.
+    TodayPartial : DInt := 1; // byte 172: 1 = incomplete/uncertain current day.
+    PreviousDayPartial : DInt := 1; // byte 176: 1 = incomplete/uncertain held day.
+    LocalDateYYYYMMDD : DInt := 0; // byte 180: Readable current PLC local date.
+    LocalTimeHHMMSS : DInt := 0; // byte 184: Readable current PLC local time; e.g. 63000 means 06:30:00.
+    CurrentHourLocalLabel : DInt := 0; // byte 188: YYYYMMDDHH label, e.g. 2026092817; key UTC distinguishes repeated DST hour.
+    PreviousHourLocalLabel : DInt := 0; // byte 192: Local label for held hour.
+    PartialObservationsSkipped : DInt := 0; // byte 196: Synchronization boundaries/aborted active observations not counted as complete cycles.
+    IgnoredCloseEdges : DInt := 0; // byte 200: Additional closing edges ignored while the current measured cycle was active.
+    RestartEvents : DInt := 0; // byte 204: First-call/startup-reset events observed.
+    ConfigurationOK : DInt := 0; // byte 208: Expected MM6 Servo and EUROMAP selectors both true.
+    ProductionMode : DInt := 0; // byte 212: Verified production-eligibility input supplied by caller; setup/jog is excluded.
+    AbortActive : DInt := 0; // byte 216: Verified observation-abort input supplied by caller.
+    CloseCommand : DInt := 0; // byte 220: Snapshot of MM6 DB98.DBX112.7.
+    RobotPermit : DInt := 0; // byte 224: Snapshot of MM6 DB94.DBX29.6.
+    Synchronized : DInt := 0; // byte 228: 1 after a qualified robot low-to-high boundary has been observed.
+    LastCycleEndDate : DInt := 0; // byte 232: Local YYYYMMDD at last measured completion; 0 if clock unavailable.
+    LastCycleEndTime : DInt := 0; // byte 236: Local HHMMSS at last measured completion; inspect LastCycleEndDate for validity.
+END_VAR
+BEGIN
+END_DATA_BLOCK
+
+DATA_BLOCK "CSI2_Setup"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 2.0
+VAR
+    Enable : Bool := FALSE;
+    WiringReviewed : Bool := FALSE;
+    StartupPending : Bool := TRUE;
+END_VAR
+BEGIN
+END_DATA_BLOCK
+
+FUNCTION "CSI2_DayNumber" : DInt
+VERSION : 2.0
+VAR_INPUT
+    Year : Int;
+    Month : Int;
+    Day : Int;
+END_VAR
+VAR_TEMP
+    y : DInt;
+    m : Int;
+    md : Int;
+    ordinal : DInt;
+    leap : Bool;
+END_VAR
+BEGIN
+    #CSI2_DayNumber := -1;
+    IF (#Year < 1990) OR (#Year > 2089) OR (#Month < 1) OR (#Month > 12) THEN RETURN; END_IF;
+    #leap := ((#Year MOD 4) = 0) AND (((#Year MOD 100) <> 0) OR ((#Year MOD 400) = 0));
+    #y := INT_TO_DINT(#Year) - 1;
+    #ordinal := #y * 365 + #y / 4 - #y / 100 + #y / 400;
+    FOR #m := 1 TO #Month DO
+        CASE #m OF
+            4,6,9,11: #md := 30;
+            2: IF #leap THEN #md := 29; ELSE #md := 28; END_IF;
+            ELSE #md := 31;
+        END_CASE;
+        IF #m < #Month THEN #ordinal := #ordinal + INT_TO_DINT(#md); END_IF;
+    END_FOR;
+    IF (#Day < 1) OR (#Day > #md) THEN RETURN; END_IF;
+    #CSI2_DayNumber := #ordinal + INT_TO_DINT(#Day) - 726468;
+END_FUNCTION
+
+FUNCTION "CSI2_Increment" : DInt
+VERSION : 2.0
+VAR_INPUT
+    Value : DInt;
+END_VAR
+BEGIN
+    IF #Value < 2147483647 THEN
+        #CSI2_Increment := #Value + 1;
+    ELSE
+        #CSI2_Increment := 2147483647;
+        "CSI2_Report".CounterSaturated := 1;
+    END_IF;
+END_FUNCTION
+
+FUNCTION "CSI2_AddElapsed" : Void
+VERSION : 2.0
+VAR_INPUT
+    DeltaMs : DInt;
+END_VAR
+VAR_IN_OUT
+    Seconds : DInt;
+    Millis : DInt;
+END_VAR
+VAR_TEMP
+    carry : DInt;
+END_VAR
+BEGIN
+    // Seconds + remainder prevents the 24.8-day DINT-millisecond limit.
+    #Millis := #Millis + #DeltaMs;
+    #carry := #Millis / 1000;
+    #Millis := #Millis MOD 1000;
+    IF #Seconds <= 2147483647 - #carry THEN
+        #Seconds := #Seconds + #carry;
+    ELSE
+        #Seconds := 2147483647;
+        #Millis := 999;
+        "CSI2_Report".TimingFault := 1;
+    END_IF;
+END_FUNCTION
+
+FUNCTION_BLOCK "CSI2_PeriodCounter"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 2.0
+VAR_INPUT
+    ClockOK : Bool;
+    ContinuityOK : Bool;
+    CollectionOK : Bool;
+    KeyNow : DInt;
+    LabelNow : DInt;
+    WindowActive : Bool;
+    CountPulse : Bool;
+END_VAR
+VAR_OUTPUT
+    CurrentCount : DInt := 0;
+    PreviousCount : DInt := 0;
+    CurrentKey : DInt := -1;
+    PreviousKey : DInt := -1;
+    CurrentLabel : DInt := 0;
+    PreviousLabel : DInt := 0;
+    CurrentPartial : Bool := TRUE;
+    PreviousPartial : Bool := TRUE;
+END_VAR
+VAR
+    HaveCurrent : Bool := FALSE;
+    Closed : Bool := FALSE;
+    LastClockOK : Bool := FALSE;
+    LastSeenKey : DInt := -1;
+END_VAR
+VAR_TEMP
+    continuous : Bool;
+END_VAR
+BEGIN
+    IF NOT #ClockOK THEN
+        IF #HaveCurrent AND NOT #Closed THEN #CurrentPartial := TRUE; END_IF;
+        #LastClockOK := FALSE;
+        RETURN;
+    END_IF;
+    // Never relabel retained counts into an earlier period after clock rollback.
+    IF #HaveCurrent AND (#KeyNow < #CurrentKey) THEN
+        #CurrentPartial := TRUE;
+        #LastClockOK := FALSE;
+        RETURN;
+    END_IF;
+    #continuous := #ContinuityOK AND #LastClockOK
+        AND ((#KeyNow = #LastSeenKey) OR (#KeyNow = #LastSeenKey + 1));
+    IF #HaveCurrent AND NOT #Closed THEN
+        IF NOT #continuous OR NOT #CollectionOK THEN #CurrentPartial := TRUE; END_IF;
+        IF (#KeyNow <> #CurrentKey) OR NOT #WindowActive THEN
+            // CLOSE OLD PERIOD BEFORE ADDING A BOUNDARY COMPLETION.
+            #PreviousCount := #CurrentCount;
+            #PreviousKey := #CurrentKey;
+            #PreviousLabel := #CurrentLabel;
+            #PreviousPartial := #CurrentPartial;
+            #Closed := TRUE;
+        END_IF;
+    END_IF;
+    IF #WindowActive THEN
+        IF NOT #HaveCurrent OR (#KeyNow <> #CurrentKey) THEN
+            #HaveCurrent := TRUE;
+            #Closed := FALSE;
+            #CurrentCount := 0;
+            #CurrentKey := #KeyNow;
+            #CurrentLabel := #LabelNow;
+            #CurrentPartial := NOT #continuous OR NOT #CollectionOK;
+        END_IF;
+        IF NOT #Closed THEN
+            IF NOT #CollectionOK OR NOT #continuous THEN #CurrentPartial := TRUE; END_IF;
+            IF #CountPulse THEN
+                #CurrentCount := "CSI2_Increment"(Value := #CurrentCount);
+            END_IF;
+        END_IF;
+    END_IF;
+    #LastSeenKey := #KeyNow;
+    #LastClockOK := TRUE;
+END_FUNCTION_BLOCK
+
+FUNCTION_BLOCK "CSI2_CycleMonitor"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 2.0
+VAR_INPUT
+    Enable : Bool;
+    Restart : Bool;
+    CloseCommand : Bool;
+    RobotPermit : Bool;
+    ProductionMode : Bool;
+    SignalsValid : Bool;
+    AbortCycle : Bool;
+    TickMs : DInt;
+    RawClockOK : Bool;
+    LocalStamp : DTL;
+    UtcStamp : DTL;
+END_VAR
+VAR
+    Initialized : Bool := FALSE;
+    State : Int := 0;
+    PrevTick : DInt := 0;
+    PrevClose : Bool := FALSE;
+    PrevPermit : Bool := FALSE;
+    SyncLowSeen : Bool := FALSE;
+    CycleLowSeen : Bool := FALSE;
+    CycleSec : DInt := 0;
+    CycleMs : DInt := 0;
+    GapSec : DInt := 0;
+    GapMs : DInt := 0;
+    HaveUtc : Bool := FALSE;
+    LastUtcSecond : LInt := 0;
+    LastClockWasOK : Bool := FALSE;
+    HourCounter : "CSI2_PeriodCounter";
+    DayCounter : "CSI2_PeriodCounter";
+    Shift1Counter : "CSI2_PeriodCounter";
+    Shift2Counter : "CSI2_PeriodCounter";
+END_VAR
+VAR_TEMP
+    fresh : Bool;
+    tickOK : Bool;
+    qualified : Bool;
+    closeRise : Bool;
+    permitRise : Bool;
+    complete : Bool;
+    boundary : Bool;
+    collectionOK : Bool;
+    continuity : Bool;
+    calendarOK : Bool;
+    delta : DInt;
+    deltaLong : LInt;
+    localDay : DInt;
+    utcDay : DInt;
+    hourKey : DInt;
+    hourLabel : DInt;
+    dateLabel : DInt;
+    timeLabel : DInt;
+    minuteOfDay : Int;
+    shift : Int;
+    shift1Key : DInt;
+    shift2Key : DInt;
+    shift1Active : Bool;
+    shift2Active : Bool;
+    utcSecond : LInt;
+    clockStep : LInt;
+END_VAR
+BEGIN
+    "CSI2_Report".SchemaVersion := 2;
+    IF "CSI2_Report".Heartbeat >= 2147483647 THEN
+        "CSI2_Report".Heartbeat := 0;
+    ELSE
+        "CSI2_Report".Heartbeat := "CSI2_Report".Heartbeat + 1;
+    END_IF;
+    #fresh := NOT #Initialized OR #Restart;
+    #delta := 0;
+    #tickOK := (#TickMs >= 0);
+    IF #fresh THEN
+        #Initialized := TRUE;
+        #State := 0;
+        #SyncLowSeen := FALSE;
+        #CycleLowSeen := FALSE;
+        #CycleSec := 0; #CycleMs := 0;
+        #GapSec := 0; #GapMs := 0;
+        #PrevClose := #CloseCommand;
+        #PrevPermit := #RobotPermit;
+        #PrevTick := #TickMs;
+        #HaveUtc := FALSE;
+        #LastClockWasOK := FALSE;
+        "CSI2_Report".RestartEvents := "CSI2_Increment"(Value := "CSI2_Report".RestartEvents);
+    ELSIF #tickOK THEN
+        #deltaLong := DINT_TO_LINT(#TickMs) - DINT_TO_LINT(#PrevTick);
+        IF #deltaLong < 0 THEN #deltaLong := #deltaLong + LINT#2147483648; END_IF;
+        IF (#deltaLong < 0) OR (#deltaLong > 10000) THEN
+            #tickOK := FALSE;
+            "CSI2_Report".TimingFault := 1;
+        ELSE
+            #delta := LINT_TO_DINT(#deltaLong);
+        END_IF;
+    END_IF;
+    #PrevTick := #TickMs;
+    #closeRise := #CloseCommand AND NOT #PrevClose AND NOT #fresh;
+    #permitRise := #RobotPermit AND NOT #PrevPermit AND NOT #fresh;
+    #qualified := #Enable AND #SignalsValid AND #tickOK AND NOT #fresh;
+    #complete := FALSE;
+    #boundary := FALSE;
+
+    // Losing trustworthy signal data cancels an observation, not held history.
+    IF NOT #qualified OR #AbortCycle OR ((#State = 30) AND NOT #ProductionMode) THEN
+        IF #State = 30 THEN
+            "CSI2_Report".PartialObservationsSkipped := "CSI2_Increment"(Value := "CSI2_Report".PartialObservationsSkipped);
+        END_IF;
+        #State := 0;
+        #SyncLowSeen := FALSE;
+        #CycleLowSeen := FALSE;
+        #CycleSec := 0; #CycleMs := 0;
+        #GapSec := 0; #GapMs := 0;
+    END_IF;
+    IF #qualified AND NOT #AbortCycle THEN
+        IF #State = 0 THEN
+            #State := 10;
+            #SyncLowSeen := FALSE;
+        END_IF;
+        CASE #State OF
+            10: // Synchronize: do NOT accept the first random closing pulse.
+                IF #ProductionMode THEN
+                    IF NOT #RobotPermit THEN #SyncLowSeen := TRUE; END_IF;
+                    IF #SyncLowSeen AND #permitRise THEN
+                        #boundary := TRUE;
+                        #State := 20;
+                        #GapSec := 0; #GapMs := 0;
+                        #SyncLowSeen := FALSE;
+                        "CSI2_Report".PartialObservationsSkipped := "CSI2_Increment"(Value := "CSI2_Report".PartialObservationsSkipped);
+                    END_IF;
+                ELSE
+                    #SyncLowSeen := FALSE;
+                END_IF;
+            20: // Known waiting gap keeps accumulating even while idle/manual.
+                "CSI2_AddElapsed"(DeltaMs := #delta, Seconds := #GapSec, Millis := #GapMs);
+                IF NOT #RobotPermit OR (#closeRise AND NOT #ProductionMode) THEN
+                    // A new robot/manual operation without a measured start: resynchronize.
+                    #State := 10;
+                    #SyncLowSeen := NOT #RobotPermit AND #ProductionMode;
+                    #GapSec := 0; #GapMs := 0;
+                END_IF;
+            30: // Whole-cycle elapsed time, NOT just valve-on time.
+                "CSI2_AddElapsed"(DeltaMs := #delta, Seconds := #CycleSec, Millis := #CycleMs);
+                IF NOT #RobotPermit THEN #CycleLowSeen := TRUE; END_IF;
+                #complete := #CycleLowSeen AND #permitRise;
+                IF #complete THEN
+                    #boundary := TRUE;
+                    "CSI2_Report".PreviousCycleSeconds := DINT_TO_REAL(#CycleSec) + DINT_TO_REAL(#CycleMs) / 1000.0;
+                    "CSI2_Report".PreviousCycleValid := 1;
+                    "CSI2_Report".TotalCompleted := "CSI2_Increment"(Value := "CSI2_Report".TotalCompleted);
+                    #State := 20;
+                    #CycleSec := 0; #CycleMs := 0;
+                    #GapSec := 0; #GapMs := 0;
+                    #CycleLowSeen := FALSE;
+                ELSIF #closeRise THEN
+                    "CSI2_Report".IgnoredCloseEdges := "CSI2_Increment"(Value := "CSI2_Report".IgnoredCloseEdges);
+                END_IF;
+        END_CASE;
+        // If closing was already high BEFORE the clear boundary, its start was
+        // not captured here. Skip that ambiguous next cycle; never start on its later pulse.
+        IF #boundary AND #CloseCommand AND NOT #closeRise THEN
+            #State := 10;
+            #SyncLowSeen := FALSE;
+            #GapSec := 0; #GapMs := 0;
+        END_IF;
+        // Finish/synchronize FIRST; accept the next start SECOND.
+        // A simultaneous completion/start stores a zero observed between-cycle time.
+        IF (#State = 20) AND #ProductionMode AND #RobotPermit AND #closeRise THEN
+            "CSI2_Report".PreviousBetweenSeconds := DINT_TO_REAL(#GapSec) + DINT_TO_REAL(#GapMs) / 1000.0;
+            "CSI2_Report".PreviousBetweenValid := 1;
+            #State := 30;
+            #CycleSec := 0; #CycleMs := 0;
+            #GapSec := 0; #GapMs := 0;
+            #CycleLowSeen := FALSE;
+        END_IF;
+    END_IF;
+    #collectionOK := #qualified AND NOT #AbortCycle AND ((#State = 20) OR (#State = 30));
+
+    // Calendar labels use LOCAL time. UTC hour identity distinguishes fall-back hours.
+    // Assumption: plant uses a whole-hour UTC offset (Alabama Central time).
+    #localDay := -1; #utcDay := -1;
+    #hourKey := -1; #hourLabel := 0; #dateLabel := 0; #timeLabel := 0;
+    #minuteOfDay := 0; #shift := 0;
+    #shift1Key := -1; #shift2Key := -1;
+    #shift1Active := FALSE; #shift2Active := FALSE;
+    #calendarOK := #RawClockOK;
+    IF #calendarOK THEN
+        #localDay := "CSI2_DayNumber"(Year := UINT_TO_INT(#LocalStamp.YEAR), Month := USINT_TO_INT(#LocalStamp.MONTH), Day := USINT_TO_INT(#LocalStamp.DAY));
+        #utcDay := "CSI2_DayNumber"(Year := UINT_TO_INT(#UtcStamp.YEAR), Month := USINT_TO_INT(#UtcStamp.MONTH), Day := USINT_TO_INT(#UtcStamp.DAY));
+        #calendarOK := (#localDay >= 0) AND (#utcDay >= 0)
+            AND (#LocalStamp.HOUR < 24) AND (#LocalStamp.MINUTE < 60) AND (#LocalStamp.SECOND < 60)
+            AND (#UtcStamp.HOUR < 24) AND (#UtcStamp.MINUTE < 60) AND (#UtcStamp.SECOND < 60);
+    END_IF;
+    #continuity := #LastClockWasOK AND #tickOK AND NOT #fresh;
+    IF #calendarOK THEN
+        #utcSecond := DINT_TO_LINT(#utcDay) * LINT#86400
+            + USINT_TO_LINT(#UtcStamp.HOUR) * LINT#3600
+            + USINT_TO_LINT(#UtcStamp.MINUTE) * LINT#60 + USINT_TO_LINT(#UtcStamp.SECOND);
+        IF #HaveUtc THEN
+            #clockStep := #utcSecond - #LastUtcSecond;
+            IF #clockStep < 0 THEN
+                // Wait until UTC catches up; preserve keyed history instead of relabeling it.
+                #calendarOK := FALSE;
+                #continuity := FALSE;
+                "CSI2_Report".ClockReview := 1;
+            ELSIF #clockStep > DINT_TO_LINT(#delta / 1000 + 2) THEN
+                #continuity := FALSE;
+                "CSI2_Report".ClockReview := 1;
+            END_IF;
+        END_IF;
+        #hourKey := #utcDay * 24 + USINT_TO_DINT(#UtcStamp.HOUR);
+        #minuteOfDay := USINT_TO_INT(#LocalStamp.HOUR) * 60 + USINT_TO_INT(#LocalStamp.MINUTE);
+        #shift1Key := #localDay;
+        IF #minuteOfDay < 390 THEN #shift1Key := #localDay - 1; END_IF;
+        #shift2Key := #localDay;
+        IF #minuteOfDay < 1020 THEN #shift2Key := #localDay - 1; END_IF;
+        // Guard retained period identities across a restart with an earlier clock.
+        IF (#hourKey < #HourCounter.CurrentKey) OR (#localDay < #DayCounter.CurrentKey)
+           OR (#shift1Key < #Shift1Counter.CurrentKey) OR (#shift2Key < #Shift2Counter.CurrentKey) THEN
+            #calendarOK := FALSE;
+            #continuity := FALSE;
+            "CSI2_Report".ClockReview := 1;
+        END_IF;
+        IF #calendarOK THEN
+            #LastUtcSecond := #utcSecond;
+            #HaveUtc := TRUE;
+            #dateLabel := UINT_TO_DINT(#LocalStamp.YEAR) * 10000
+                + USINT_TO_DINT(#LocalStamp.MONTH) * 100 + USINT_TO_DINT(#LocalStamp.DAY);
+            #timeLabel := USINT_TO_DINT(#LocalStamp.HOUR) * 10000
+                + USINT_TO_DINT(#LocalStamp.MINUTE) * 100 + USINT_TO_DINT(#LocalStamp.SECOND);
+            #hourLabel := #dateLabel * 100 + USINT_TO_DINT(#LocalStamp.HOUR);
+            #shift1Active := (#minuteOfDay >= 390) AND (#minuteOfDay < 1020);
+            #shift2Active := (#minuteOfDay >= 1020) OR (#minuteOfDay < 360);
+            IF #shift1Active THEN #shift := 1; ELSIF #shift2Active THEN #shift := 2; END_IF;
+        END_IF;
+    END_IF;
+    IF NOT #calendarOK THEN
+        #continuity := FALSE;
+        "CSI2_Report".ClockReview := 1;
+    END_IF;
+    #LastClockWasOK := #calendarOK;
+
+    // Four independent buckets. Each rolls old values FIRST, then counts this completion.
+    #HourCounter(ClockOK := #calendarOK, ContinuityOK := #continuity, CollectionOK := #collectionOK,
+        KeyNow := #hourKey, LabelNow := #hourLabel, WindowActive := TRUE, CountPulse := #complete);
+    #DayCounter(ClockOK := #calendarOK, ContinuityOK := #continuity, CollectionOK := #collectionOK,
+        KeyNow := #localDay, LabelNow := #dateLabel, WindowActive := TRUE, CountPulse := #complete);
+    #Shift1Counter(ClockOK := #calendarOK, ContinuityOK := #continuity, CollectionOK := #collectionOK,
+        KeyNow := #shift1Key, LabelNow := #shift1Key, WindowActive := #shift1Active, CountPulse := #complete);
+    #Shift2Counter(ClockOK := #calendarOK, ContinuityOK := #continuity, CollectionOK := #collectionOK,
+        KeyNow := #shift2Key, LabelNow := #shift2Key, WindowActive := #shift2Active, CountPulse := #complete);
+    IF #complete THEN
+        "CSI2_Report".LastCycleEndDate := 0;
+        "CSI2_Report".LastCycleEndTime := 0;
+        IF #calendarOK THEN
+            "CSI2_Report".LastCycleEndDate := #dateLabel;
+            "CSI2_Report".LastCycleEndTime := #timeLabel;
+            IF #shift = 0 THEN
+                "CSI2_Report".GapCompleted := "CSI2_Increment"(Value := "CSI2_Report".GapCompleted);
+            END_IF;
+        ELSE
+            "CSI2_Report".ClockUnassigned := "CSI2_Increment"(Value := "CSI2_Report".ClockUnassigned);
+        END_IF;
+    END_IF;
+
+    // Publish simple flat fields. Kepware reads these; it does not count PLC pulses.
+    "CSI2_Report".CyclesThisHour := #HourCounter.CurrentCount;
+    "CSI2_Report".CyclesPreviousHour := #HourCounter.PreviousCount;
+    "CSI2_Report".ThisHourKeyUTC := #HourCounter.CurrentKey;
+    "CSI2_Report".PreviousHourKeyUTC := #HourCounter.PreviousKey;
+    "CSI2_Report".CurrentHourLocalLabel := #HourCounter.CurrentLabel;
+    "CSI2_Report".PreviousHourLocalLabel := #HourCounter.PreviousLabel;
+    "CSI2_Report".ThisHourPartial := BOOL_TO_DINT(#HourCounter.CurrentPartial);
+    "CSI2_Report".PreviousHourPartial := BOOL_TO_DINT(#HourCounter.PreviousPartial);
+    "CSI2_Report".CyclesToday := #DayCounter.CurrentCount;
+    "CSI2_Report".CyclesPreviousDay := #DayCounter.PreviousCount;
+    "CSI2_Report".TodayKeyLocal := #DayCounter.CurrentKey;
+    "CSI2_Report".PreviousDayKeyLocal := #DayCounter.PreviousKey;
+    "CSI2_Report".TodayPartial := BOOL_TO_DINT(#DayCounter.CurrentPartial);
+    "CSI2_Report".PreviousDayPartial := BOOL_TO_DINT(#DayCounter.PreviousPartial);
+    "CSI2_Report".Shift1Current := #Shift1Counter.CurrentCount;
+    "CSI2_Report".Shift1Previous := #Shift1Counter.PreviousCount;
+    "CSI2_Report".Shift1Day := #Shift1Counter.CurrentKey;
+    "CSI2_Report".Shift1PreviousDay := #Shift1Counter.PreviousKey;
+    "CSI2_Report".Shift1Partial := BOOL_TO_DINT(#Shift1Counter.CurrentPartial);
+    "CSI2_Report".Shift1PreviousPartial := BOOL_TO_DINT(#Shift1Counter.PreviousPartial);
+    "CSI2_Report".Shift2Current := #Shift2Counter.CurrentCount;
+    "CSI2_Report".Shift2Previous := #Shift2Counter.PreviousCount;
+    "CSI2_Report".Shift2Day := #Shift2Counter.CurrentKey;
+    "CSI2_Report".Shift2PreviousDay := #Shift2Counter.PreviousKey;
+    "CSI2_Report".Shift2Partial := BOOL_TO_DINT(#Shift2Counter.CurrentPartial);
+    "CSI2_Report".Shift2PreviousPartial := BOOL_TO_DINT(#Shift2Counter.PreviousPartial);
+    "CSI2_Report".CurrentShift := INT_TO_DINT(#shift);
+    "CSI2_Report".LocalDateYYYYMMDD := #dateLabel;
+    "CSI2_Report".LocalTimeHHMMSS := #timeLabel;
+    "CSI2_Report".ClockValid := BOOL_TO_DINT(#calendarOK);
+    "CSI2_Report".ObserverEnabled := BOOL_TO_DINT(#Enable);
+    "CSI2_Report".SignalsValid := BOOL_TO_DINT(#SignalsValid);
+    "CSI2_Report".ProductionMode := BOOL_TO_DINT(#ProductionMode);
+    "CSI2_Report".AbortActive := BOOL_TO_DINT(#AbortCycle);
+    "CSI2_Report".CloseCommand := BOOL_TO_DINT(#CloseCommand);
+    "CSI2_Report".RobotPermit := BOOL_TO_DINT(#RobotPermit);
+    "CSI2_Report".MonitorState := INT_TO_DINT(#State);
+    "CSI2_Report".CycleActive := BOOL_TO_DINT(#State = 30);
+    "CSI2_Report".BetweenActive := BOOL_TO_DINT(#State = 20);
+    "CSI2_Report".Synchronized := BOOL_TO_DINT((#State = 20) OR (#State = 30));
+    "CSI2_Report".CycleSeconds := DINT_TO_REAL(#CycleSec) + DINT_TO_REAL(#CycleMs) / 1000.0;
+    "CSI2_Report".BetweenCycleSeconds := DINT_TO_REAL(#GapSec) + DINT_TO_REAL(#GapMs) / 1000.0;
+    #PrevClose := #CloseCommand;
+    #PrevPermit := #RobotPermit;
+END_FUNCTION_BLOCK
+
+DATA_BLOCK "CSI2_MM6_Instance"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 2.0
+"CSI2_CycleMonitor"
+BEGIN
+END_DATA_BLOCK
+
+FUNCTION "CSI2_MM6_Run" : Void
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 2.0
+VAR_INPUT
+    ProductionEligible : Bool;
+    RobotDataValid : Bool;
+    AbortCycle : Bool;
+END_VAR
+VAR_TEMP
+    localNow : DTL;
+    utcNow : DTL;
+    localRC : Int;
+    utcRC : Int;
+    tick : DInt;
+    clockOK : Bool;
+    configOK : Bool;
+    enabled : Bool;
+END_VAR
+BEGIN
+    // Call once at the approved end of OB1. Keep this call unconditional.
+    // CONNECT THE THREE INPUT PINS TO VERIFIED MACHINE LOGIC. No addresses guessed.
+    #tick := TIME_TO_DINT(TIME_TCK());
+    #localRC := RD_LOC_T(OUT => #localNow);
+    #utcRC := RD_SYS_T(OUT => #utcNow);
+    #clockOK := ((#localRC = 0) OR (#localRC = 1)) AND (#utcRC = 0);
+    #configOK := %DB200.DBX38.2 AND %DB200.DBX49.3;
+    #enabled := "CSI2_Setup".Enable AND "CSI2_Setup".WiringReviewed AND #configOK;
+    "CSI2_Report".ConfigurationOK := BOOL_TO_DINT(#configOK);
+    "CSI2_MM6_Instance"(Enable := #enabled, Restart := "CSI2_Setup".StartupPending,
+        CloseCommand := %DB98.DBX112.7, RobotPermit := %DB94.DBX29.6,
+        ProductionMode := #ProductionEligible, SignalsValid := #RobotDataValid, AbortCycle := #AbortCycle,
+        TickMs := #tick, RawClockOK := #clockOK, LocalStamp := #localNow, UtcStamp := #utcNow);
+    "CSI2_Setup".StartupPending := FALSE;
+END_FUNCTION
+
+FUNCTION "CSI2_MM6_Startup" : Void
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 2.0
+BEGIN
+    // Append a call in the EXISTING applicable startup OB, normally OB100.
+    // Do not replace that OB. Retained active timing must never span a restart.
+    "CSI2_Setup".StartupPending := TRUE;
+END_FUNCTION

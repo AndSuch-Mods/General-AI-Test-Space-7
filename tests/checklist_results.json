@@ -1,0 +1,29 @@
+{
+  "passed": 21,
+  "checks": [
+    "25 compact steps, not the former 84",
+    "MM6 is open by default",
+    "Relevant old completed check is preserved",
+    "Old source completion does not mark MM6 V2 installed",
+    "Old reporting DB number is not reused for new V2 layout",
+    "Retired checks and notes remain available",
+    "Source and reporting tag creation use exact location",
+    "Downloaded V2 source is byte-for-byte unchanged",
+    "Check moves the task into matching Completed folder",
+    "Checking does not move the next step on screen",
+    "Completion and note survive reload/serialized rehydration",
+    "Unchecking restores original order",
+    "Expanding instructions preserves summary position",
+    "Kepware map uses entered DB and V2 daily-count offset",
+    "CSV quotes addresses and includes all 60 fields",
+    "Backup retains previous checklist and new field values",
+    "Import restores the exported progress",
+    "Mobile document has no horizontal overflow",
+    "App reloads offline using its current cache",
+    "Correct source remains downloadable offline",
+    "No JavaScript errors"
+  ],
+  "live_browser": true,
+  "scope": "Live localhost browser, native localStorage and service worker",
+  "plc_tested": false
+}
