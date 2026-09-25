@@ -1,11 +1,17 @@
-name: Publish field-guide instructions
+name: Publish simplified checklist
 on:
   push:
     branches: [main]
     paths:
-      - field_steps.py
+      - checklist_data.py
+      - app.js
+      - style.css
       - build_html.py
       - build_content.py
+      - field_steps.py
+      - schema_v2.json
+      - downloads/MM6_Reporting_V2.scl
+      - tests/checklist_test.py
       - .github/workflows/publish-field-guide.yml
   workflow_dispatch:
 permissions:
@@ -18,42 +24,107 @@ concurrency:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-      - name: Rebuild and check instructions without changing PLC source
+      - name: Install reviewed update when staged
         run: |
-          sha256sum downloads/* > /tmp/source-before.sha
-          python3 build_html.py
-          sha256sum -c /tmp/source-before.sha
-          python3 tests/model_test.py
           python3 - <<'PY'
-          import json
+          import base64, hashlib, io, lzma, tarfile
           from pathlib import Path
-          from field_steps import apply
-          d=json.loads(Path('content.json').read_text())
-          assert len([t for g in d['machines']+d['kepware'] for t in g['tasks']])==84
-          assert apply(json.loads(json.dumps(d)))==d
-          html=Path('index.html').read_text()
-          assert 'MM5: start here' in html
-          assert 'Open the machine section below' not in html
-          assert len([x for x in d['instructions'] if x['id']=='watch-MM5'])==1
-          print('Field-guide content checks passed; PLC source unchanged.')
+          parts = [Path('_update/simple-%d.b64' % i) for i in range(1, 5)]
+          if any(p.exists() for p in parts):
+              assert all(p.exists() for p in parts), 'Incomplete update'
+              encoded = ''.join(p.read_text().strip() for p in parts)
+              packed = base64.b64decode(encoded, validate=True)
+              assert hashlib.sha256(packed).hexdigest() == 'eb4d6115623b3214cfb85bdcfeaf1305d9fbd75fa4e5bf57a9f5f750015680ca'
+              allowed = {'checklist_data.py','app.js','style.css','build_html.py','build_content.py','field_steps.py','schema_v2.json','downloads/MM6_Reporting_V2.scl','README.md','AGENTS.md','.gitignore','tests/checklist_test.py','tests/v2_reference_model.py','tests/v2_model_test.py'}
+              with tarfile.open(fileobj=io.BytesIO(lzma.decompress(packed)), mode='r:') as archive:
+                  assert {m.name for m in archive.getmembers()} == allowed
+                  for member in archive.getmembers():
+                      path = Path(member.name)
+                      assert member.isfile() and not path.is_absolute() and '..' not in path.parts
+                      path.parent.mkdir(parents=True, exist_ok=True)
+                      path.write_bytes(archive.extractfile(member).read())
+              for part in parts:
+                  part.unlink()
+              print('Reviewed update installed; archive checksum matched.')
           PY
-      - name: Save generated guide to the repository
+      - name: Build checklist and test V2 reporting model
+        run: |
+          echo 'eb709811803d67a10be673682d831cb80bf25cf814d40c612f753730e17a8b49  downloads/MM6_Reporting_V2.scl' | sha256sum -c -
+          python3 build_html.py
+          python3 tests/v2_model_test.py
+          node --check app.js
+      - name: Install browser test tools
+        run: |
+          python3 -m pip install playwright
+          python3 -m playwright install --with-deps chromium
+      - name: Test checklists, storage, scrolling and offline use
+        env:
+          REQUIRE_LIVE_BROWSER: '1'
+        run: python3 tests/checklist_test.py
+      - name: Save reviewed files and generated page
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add index.html content.json sw.js
+          git add checklist_data.py app.js style.css build_html.py build_content.py field_steps.py schema_v2.json downloads/MM6_Reporting_V2.scl README.md AGENTS.md .gitignore tests/checklist_test.py tests/v2_reference_model.py tests/v2_model_test.py tests/checklist_results.json tests/v2_model_results.json index.html content.json sw.js manifest.webmanifest .nojekyll
+          git add -u
           if ! git diff --cached --quiet; then
-            git commit -m 'Publish exact watch-table steps and MM5 shortcut'
+            git commit -m 'Simplify checklists and publish MM6 V2 installation'
             git push
           fi
+      - name: Prepare public app files
+        run: |
+          mkdir -p _site/downloads
+          cp index.html sw.js manifest.webmanifest .nojekyll _site/
+          cp downloads/MM6_Reporting_V2.scl _site/downloads/
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: .
-      - name: Publish the guide
+          path: _site
+      - name: Publish the checklist
         id: deployment
         uses: actions/deploy-pages@v4
+      - name: Verify published files
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from urllib.request import Request, urlopen
+          import hashlib, json, os, time
+          base = 'https://andsuch-mods.github.io/General-AI-Test-Space-7/'
+          for name in ['index.html','sw.js','manifest.webmanifest','downloads/MM6_Reporting_V2.scl']:
+              expected = Path(name).read_bytes()
+              for attempt in range(12):
+                  try:
+                      request = Request(base + name + '?verify=' + os.environ['GITHUB_SHA'], headers={'User-Agent':'Checklist-deployment-check'})
+                      with urlopen(request, timeout=20) as response:
+                          actual = response.read()
+                          assert response.status == 200
+                      assert actual == expected, 'Published content differs: ' + name
+                      print('PASS live exact match:', name, hashlib.sha256(actual).hexdigest())
+                      break
+                  except Exception as exc:
+                      if attempt == 11:
+                          raise
+                      print('Retry:', name, exc)
+                      time.sleep(10)
+          browser=json.loads(Path('tests/checklist_results.json').read_text())
+          assert browser['live_browser'] is True
+          with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as summary:
+              summary.write('Published and verified the simplified checklist: '+base+'\n\n')
+              summary.write(str(browser['passed'])+' live browser checks passed, including persistence and offline use. MM6 V2 source bytes are unchanged. Reporting model tests are not TIA compilation or PLC tests.\n')
+          PY
+      - name: Keep test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: checklist-validation
+          path: |
+            tests/checklist_results.json
+            tests/v2_model_results.json
+            tests/desktop.png
+            tests/how.png
+            tests/mobile.png
