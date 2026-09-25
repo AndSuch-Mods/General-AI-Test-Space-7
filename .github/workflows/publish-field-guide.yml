@@ -1,0 +1,59 @@
+name: Publish field-guide instructions
+on:
+  push:
+    branches: [main]
+    paths:
+      - field_steps.py
+      - build_html.py
+      - build_content.py
+      - .github/workflows/publish-field-guide.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+concurrency:
+  group: field-guide-publish
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rebuild and check instructions without changing PLC source
+        run: |
+          sha256sum downloads/* > /tmp/source-before.sha
+          python3 build_html.py
+          sha256sum -c /tmp/source-before.sha
+          python3 tests/model_test.py
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          from field_steps import apply
+          d=json.loads(Path('content.json').read_text())
+          assert len([t for g in d['machines']+d['kepware'] for t in g['tasks']])==84
+          assert apply(json.loads(json.dumps(d)))==d
+          html=Path('index.html').read_text()
+          assert 'MM5: start here' in html
+          assert 'Open the machine section below' not in html
+          assert len([x for x in d['instructions'] if x['id']=='watch-MM5'])==1
+          print('Field-guide content checks passed; PLC source unchanged.')
+          PY
+      - name: Save generated guide to the repository
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html content.json sw.js
+          if ! git diff --cached --quiet; then
+            git commit -m 'Publish exact watch-table steps and MM5 shortcut'
+            git push
+          fi
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+      - name: Publish the guide
+        id: deployment
+        uses: actions/deploy-pages@v4
