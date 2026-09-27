@@ -48,6 +48,7 @@ ok('Every displayed executable section changes names only',newp.code=={(rename_t
 ok('All eight main-code sections still exist',len([1 for a,b in newp.code if a=='CSI_Reporting'])==8)
 manifest=json.loads((R/'manifest.webmanifest').read_text())
 ok('Home-screen manifest includes real checklist icons',len(manifest['icons'])==2 and all((R/i['src'].split('?')[0]).is_file()for i in manifest['icons']))
+ok('Manifest is forced dark',manifest['background_color']=='#081118' and manifest['theme_color']=='#081118')
 class Quiet(SimpleHTTPRequestHandler):
  def log_message(self,*args):pass
 server=ThreadingHTTPServer(('127.0.0.1',0),partial(Quiet,directory=str(R)));threading.Thread(target=server.serve_forever,daemon=True).start();url='http://127.0.0.1:'+str(server.server_port)+'/'
@@ -71,6 +72,7 @@ with sync_playwright() as p:
  seed={'version':3,'done':{'MM4-start':'test','MM6-manual-setup':'test'},'notes':{'MM6-manual-setup':'Keep this note exactly: CSI2_Setup prior name'},'fields':{'MM6':{'reportDbV2':'950'}},'open':{'programming':True,'todo-MM6':True,'manual-CSI2_Report-Static-0':True}}
  mount({'csi-machine-reporting-checklist-v3':json.dumps(seed)})
  ok('Header uses a checklist graphic, not a letter fallback',page.locator('.brand-emblem svg').count()==1)
+ ok('Forced dark mode ignores a light browser preference',page.evaluate("getComputedStyle(document.documentElement).colorScheme.includes('dark') && getComputedStyle(document.body).color==='rgb(231, 239, 243)'"))
  ok('Browser and iPhone icon links are present',page.locator('link[rel="apple-touch-icon"]').count()==1 and page.locator('link[rel="icon"]').count()==2)
  ok('Old checks, notes and DB number survive',page.locator('#done-MM6 [data-task="MM6-manual-setup"]').count()==1 and page.locator('#note-MM6-manual-setup textarea').input_value()==seed['notes']['MM6-manual-setup'] and page.locator('#field-MM6-reportDbV2').input_value()=='950')
  ok('Previously opened declaration panels follow new CSI names',page.locator('#manual-CSI_Report-Static-0').get_attribute('open') is not None)
