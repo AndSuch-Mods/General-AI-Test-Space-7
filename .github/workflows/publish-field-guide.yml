@@ -1,10 +1,12 @@
-name: Publish manual CSI checklist
+name: Publish CSI checklist
 on:
   push:
     branches: [main]
     paths:
       - checklist_data.py
       - manual_steps.py
+      - csi_branding.py
+      - csi_theme.css
       - app.js
       - style.css
       - build_html.py
@@ -12,6 +14,7 @@ on:
       - downloads/MM6_Reporting_V2.scl
       - tests/manual_structure_test.py
       - tests/manual_checklist_test.py
+      - tests/csi_branding_test.py
       - .github/workflows/publish-field-guide.yml
   workflow_dispatch:
 permissions:
@@ -30,16 +33,16 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-      - name: Install reviewed manual guide when staged
+      - name: Install reviewed naming and appearance update
         run: |
           python3 - <<'PY'
           import base64, hashlib, io, lzma, tarfile
           from pathlib import Path
-          part=Path('_update/manual-csi.b64')
+          part=Path('_update/csi-look.b64')
           if part.exists():
               packed=base64.b64decode(part.read_text().strip(),validate=True)
-              assert hashlib.sha256(packed).hexdigest()=='d509dd9c5237f8b7b28f40611ce24f66b61964109d5b668414622cfdfad47050'
-              allowed={'manual_steps.py','tests/manual_structure_test.py','tests/manual_checklist_test.py'}
+              assert hashlib.sha256(packed).hexdigest()=='94fb15b01885baa32bf63d8c9fbe20e4c7f6b2f44585e5ba715550ec60663763'
+              allowed={'csi_branding.py','csi_theme.css','tests/csi_branding_test.py'}
               with tarfile.open(fileobj=io.BytesIO(lzma.decompress(packed)),mode='r:') as archive:
                   assert {m.name for m in archive.getmembers()}==allowed
                   for member in archive.getmembers():
@@ -48,57 +51,62 @@ jobs:
                       path.parent.mkdir(parents=True,exist_ok=True)
                       path.write_bytes(archive.extractfile(member).read())
               part.unlink()
-              print('Manual-guide archive checksum matched.')
+              print('Reviewed update checksum matched.')
           PY
           python3 manual_steps.py --install
-      - name: Build and verify manual instructions against unchanged V2 logic
+          python3 csi_branding.py --install
+      - name: Install test and icon tools
+        run: |
+          python3 -m pip install --disable-pip-version-check Pillow playwright
+          python3 -m playwright install --with-deps chromium
+      - name: Build and verify unchanged reporting behavior
         run: |
           echo 'eb709811803d67a10be673682d831cb80bf25cf814d40c612f753730e17a8b49  downloads/MM6_Reporting_V2.scl' | sha256sum -c -
           python3 build_html.py
           python3 tests/manual_structure_test.py
           python3 tests/v2_model_test.py
           node --check app.js
-      - name: Install browser test tools
-        run: |
-          python3 -m pip install playwright
-          python3 -m playwright install --with-deps chromium
-      - name: Test manual checklists, code sections, storage and offline use
+      - name: Test manual code, CSI names, icons and saved progress
         env:
           REQUIRE_LIVE_BROWSER: '1'
-        run: python3 tests/manual_checklist_test.py
-      - name: Save reviewed files and generated page
+        run: |
+          python3 tests/manual_checklist_test.py
+          python3 tests/csi_branding_test.py
+      - name: Save current guide and test results
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add manual_steps.py tests/manual_structure_test.py tests/manual_checklist_test.py tests/manual_structure_results.json tests/manual_checklist_results.json tests/v2_model_results.json app.js style.css build_html.py README.md AGENTS.md index.html content.json sw.js manifest.webmanifest .nojekyll
+          git add csi_branding.py csi_theme.css tests/csi_branding_test.py tests/csi_branding_results.json tests/manual_structure_results.json tests/manual_checklist_results.json tests/manual_checklist_test.py tests/v2_model_results.json app.js style.css build_html.py README.md AGENTS.md index.html content.json sw.js manifest.webmanifest .nojekyll downloads/MM6_CSI_Reporting.scl checklist-icon.svg checklist-icon-32.png checklist-icon-192.png checklist-icon-512.png apple-touch-icon.png
           git add -u
           if ! git diff --cached --quiet; then
-            git commit -m 'Publish hand-built CSI reporting guide with exact variables and code sections'
+            git commit -m 'Use CSI names throughout manual guide and restore checklist branding'
             git push
           fi
       - name: Prepare public app files
         run: |
           mkdir -p _site/downloads
-          cp index.html sw.js manifest.webmanifest .nojekyll _site/
-          cp downloads/MM6_Reporting_V2.scl _site/downloads/
+          cp index.html sw.js manifest.webmanifest .nojekyll checklist-icon.svg checklist-icon-32.png checklist-icon-192.png checklist-icon-512.png apple-touch-icon.png _site/
+          cp downloads/MM6_CSI_Reporting.scl _site/downloads/
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
+          retention-days: 1
       - name: Publish the checklist
         id: deployment
         uses: actions/deploy-pages@v4
-      - name: Verify published files
+      - name: Verify live page, CSI code and app icons
         run: |
           python3 - <<'PY'
           from pathlib import Path
           from urllib.request import Request, urlopen
           import hashlib, json, os, time
           base='https://andsuch-mods.github.io/General-AI-Test-Space-7/'
-          for name in ['index.html','sw.js','manifest.webmanifest','downloads/MM6_Reporting_V2.scl']:
+          names=['index.html','sw.js','manifest.webmanifest','downloads/MM6_CSI_Reporting.scl','checklist-icon.svg','apple-touch-icon.png','checklist-icon-32.png','checklist-icon-192.png','checklist-icon-512.png']
+          for name in names:
               expected=Path(name).read_bytes()
               for attempt in range(12):
                   try:
-                      request=Request(base+name+'?verify='+os.environ['GITHUB_SHA'],headers={'User-Agent':'Manual-CSI-deployment-check'})
+                      request=Request(base+name+'?verify='+os.environ['GITHUB_SHA'],headers={'User-Agent':'CSI-checklist-verification'})
                       with urlopen(request,timeout=20) as response:
                           actual=response.read()
                           assert response.status==200
@@ -109,21 +117,10 @@ jobs:
                       if attempt==11:raise
                       print('Retry:',name,exc)
                       time.sleep(10)
-          browser=json.loads(Path('tests/manual_checklist_results.json').read_text())
-          assert browser['live_browser'] is True
+          results=json.loads(Path('tests/csi_branding_results.json').read_text())
+          assert results['live_browser'] is True
           with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as summary:
-              summary.write('Published and verified manual CSI checklist: '+base+'\n\n')
-              summary.write(str(browser['passed'])+' live browser checks passed. Manual body sections reconstruct the unchanged V2 logic; main FB display name is CSI_Reporting. No Siemens compilation or PLC test was performed.\n')
+              summary.write('Published CSI-only manual guide and clipboard/checkmark icons: '+base+'\n\n')
+              summary.write(str(results['passed'])+' CSI structure and live browser checks passed, including preserved notes, copy sections, scroll position and offline use. Reporting behavior and byte offsets are unchanged; this is not a TIA compilation or PLC test.\n\n')
+              summary.write('No extra screenshots/test ZIP artifacts retained. Only the required Pages deployment artifact is stored, with one-day retention. Billing settings were not changed.\n')
           PY
-      - name: Keep test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: manual-csi-validation
-          path: |
-            tests/manual_structure_results.json
-            tests/manual_checklist_results.json
-            tests/v2_model_results.json
-            tests/manual_desktop.png
-            tests/manual_code.png
-            tests/manual_mobile.png
