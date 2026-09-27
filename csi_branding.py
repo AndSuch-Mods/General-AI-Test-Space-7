@@ -20,7 +20,7 @@ NAMES = {
     'CSI2_Report':'CSI_Report',
     'CSI2_Setup':'CSI_Setup',
 }
-BUILD='2026-09-27-csi-checklist-v5'
+BUILD='2026-09-27-csi-checklist-v6-dark'
 
 def rename_text(text):
     for old,new in NAMES.items():text=text.replace(old,new)
@@ -54,7 +54,7 @@ def renamed_source(text):
 
 ICON_SVG='''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="#193d50"/><stop offset="1" stop-color="#102e3b"/></linearGradient></defs><rect width="512" height="512" fill="url(#bg)"/><circle cx="438" cy="47" r="188" fill="#3d8c80" opacity=".12"/><rect x="120" y="108" width="284" height="348" rx="28" fill="#091f29" opacity=".32"/><rect x="108" y="91" width="284" height="348" rx="27" fill="#f3f8f2"/><rect x="192" y="67" width="116" height="63" rx="16" fill="#83d7b4"/><rect x="227" y="85" width="46" height="11" rx="5.5" fill="#244d4d"/><g fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="151" y="169" width="39" height="39" rx="7" stroke="#218773" stroke-width="6"/><path d="m158 187 10 10 22-27" stroke="#218773" stroke-width="8"/><path d="M216 183h122M216 203h84" stroke="#547784" stroke-width="9"/><rect x="151" y="254" width="39" height="39" rx="7" stroke="#218773" stroke-width="6"/><path d="m158 272 10 10 22-27" stroke="#218773" stroke-width="8"/><path d="M216 268h122M216 288h70" stroke="#547784" stroke-width="9"/><rect x="151" y="339" width="39" height="39" rx="7" stroke="#d8a957" stroke-width="6"/><path d="M216 353h122M216 373h94" stroke="#547784" stroke-width="9"/></g></svg>'''
 
-HEADER='''<header><div class="header-line"><div class="brand"><div class="brand-emblem" aria-hidden="true">'''+ICON_SVG+'''</div><div><p class="brand-label">CSI / machine reporting</p><h1>Machine checklist</h1></div></div><span class="revision">27 Sep · CSI</span></div><nav aria-label="Jump to checklist"><button data-open="todo-MM6" aria-pressed="true">MM6</button><button data-open="todo-MM4" aria-pressed="false">MM4</button><button data-open="todo-MM5" aria-pressed="false">MM5</button><button data-open="kepware" aria-pressed="false">Kepware</button></nav><div class="progress-row"><span id="progress-text"></span><progress id="progress" value="0" max="33" aria-label="Completed steps"></progress><span id="saved"></span></div></header>'''
+HEADER='''<header><div class="header-line"><div class="brand"><div class="brand-emblem" aria-hidden="true">'''+ICON_SVG+'''</div><div><p class="brand-label">CSI / machine reporting</p><h1>Machine checklist</h1></div></div><span class="revision">27 Sep · CSI dark</span></div><nav aria-label="Jump to checklist"><button data-open="todo-MM6" aria-pressed="true">MM6</button><button data-open="todo-MM4" aria-pressed="false">MM4</button><button data-open="todo-MM5" aria-pressed="false">MM5</button><button data-open="kepware" aria-pressed="false">Kepware</button></nav><div class="progress-row"><span id="progress-text"></span><progress id="progress" value="0" max="33" aria-label="Completed steps"></progress><span id="saved"></span></div></header>'''
 
 APP_EXTRA='''
 // Restore open declaration/code panels after a symbol-only rename; never rewrite user notes.
@@ -75,7 +75,7 @@ def decorate_markup(markup):
     markup=re.sub(r'<header>.*?</header>',lambda _:HEADER,markup,count=1,flags=re.S)
     icons='<link rel="icon" type="image/svg+xml" href="./checklist-icon.svg?v=5"><link rel="icon" type="image/png" sizes="32x32" href="./checklist-icon-32.png?v=5"><link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=5"><meta name="apple-mobile-web-app-title" content="Checklist">'
     markup=markup.replace('<link rel="manifest" href="./manifest.webmanifest">','<link rel="manifest" href="./manifest.webmanifest?v=5">'+icons,1)
-    markup=markup.replace('<meta name="theme-color" content="#17675d">','<meta name="theme-color" content="#142f40">',1)
+    markup=markup.replace('<meta name="theme-color" content="#17675d">','<meta name="theme-color" content="#081118">',1)
     return markup
 
 def write_assets(root):
@@ -99,10 +99,10 @@ def write_assets(root):
         line([(216,y+14),(338,y+14)],'#547784',9);line([(216,y+34),(216+short,y+34)],'#547784',9)
     for name,size in [('checklist-icon-32.png',32),('apple-touch-icon.png',180),('checklist-icon-192.png',192),('checklist-icon-512.png',512)]:
         im.resize((size,size),Image.Resampling.LANCZOS).save(root/name,optimize=True)
-    manifest=dict(name='CSI machine checklist',short_name='Checklist',start_url='./',scope='./',display='standalone',background_color='#eef3f5',theme_color='#142f40',icons=[dict(src='./checklist-icon-192.png?v=5',sizes='192x192',type='image/png',purpose='any maskable'),dict(src='./checklist-icon-512.png?v=5',sizes='512x512',type='image/png',purpose='any maskable')])
+    manifest=dict(name='CSI machine checklist',short_name='Checklist',start_url='./',scope='./',display='standalone',background_color='#081118',theme_color='#081118',icons=[dict(src='./checklist-icon-192.png?v=5',sizes='192x192',type='image/png',purpose='any maskable'),dict(src='./checklist-icon-512.png?v=5',sizes='512x512',type='image/png',purpose='any maskable')])
     (root/'manifest.webmanifest').write_text(json.dumps(manifest,indent=2))
     assets=['./index.html','./manifest.webmanifest','./checklist-icon.svg','./checklist-icon-32.png','./apple-touch-icon.png','./checklist-icon-192.png','./checklist-icon-512.png','./downloads/MM6_CSI_Reporting.scl']
-    sw="const CACHE='machine-reporting-csi-checklist-v5-20260927';\nconst HOME=new URL('./index.html',self.location.href).href;\nconst ASSETS="+json.dumps(assets)+";\n"
+    sw="const CACHE='machine-reporting-csi-checklist-v6-dark-20260927';\nconst HOME=new URL('./index.html',self.location.href).href;\nconst ASSETS="+json.dumps(assets)+";\n"
     sw+='''self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('machine-reporting-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',e=>{const u=new URL(e.request.url);if(e.request.method!=='GET'||u.origin!==self.location.origin||!u.pathname.startsWith(new URL(self.registration.scope).pathname))return;e.respondWith(fetch(e.request).then(r=>{if(r.ok){const clone=r.clone();e.waitUntil(caches.open(CACHE).then(c=>c.put(e.request,clone)));}return r;}).catch(()=>caches.match(e.request,{ignoreSearch:true}).then(r=>r||(e.request.mode==='navigate'?caches.match(HOME):Response.error()))));});'''
