@@ -1,4 +1,4 @@
-const CACHE='machine-reporting-csi-checklist-v5-20260927';
+const CACHE='machine-reporting-csi-checklist-v6-dark-20260927';
 const HOME=new URL('./index.html',self.location.href).href;
 const ASSETS=["./index.html", "./manifest.webmanifest", "./checklist-icon.svg", "./checklist-icon-32.png", "./apple-touch-icon.png", "./checklist-icon-192.png", "./checklist-icon-512.png", "./downloads/MM6_CSI_Reporting.scl"];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));
