@@ -9,3 +9,5 @@ Current source of truth: checklist_data.py, app.js, style.css, schema_v2.json, d
 No invented machine addresses, automatic PLC writes, forces, guessed mappings or live downloads. Preserve existing OBs, F-programs and DB layouts. Required ProductionEligible, RobotDataValid and AbortCycle mappings remain unresolved until verified on site. Do not substitute permanent TRUE signals.
 
 Run both the V2 reference-model tests and browser tests before deployment. Publish the current source only; keep customer archives and local notes out of GitHub. A Python model pass is not a Siemens compiler pass.
+
+Manual-build route: the user now wants to enter code manually. Keep exact UI clicks, declaration tables and body-only SCL pieces. manual_steps.py patches build_data without altering the V2 source. Do not revert to source import as the main checklist task. CSI is an optional folder; CSI_Reporting is the new main FB. Verify names in TIA before creation. Preserve retired v3 progress under Earlier checklist records. Run the manual structure/browser tests and existing V2 model tests.

@@ -1,0 +1,32 @@
+{
+  "passed": 24,
+  "checks": [
+    "All current tasks render; MM6 opens by default",
+    "MM4 prior completion survives",
+    "Old import completion does not mark manual code built",
+    "V1 DB number is not assumed to match the new reporting DB",
+    "V1 retired notes are still visible in Earlier records",
+    "Retired v3 import notes are not lost",
+    "New manual build starts unchecked after an imported build",
+    "Folder creation and main FB names are explicit",
+    "Main declaration sections are distinguished",
+    "Eight actual body-only code sections are present",
+    "Rendered main logic exactly reconstructs the reference body",
+    "Opening a code section does not move its heading",
+    "Copy section copies body only, not declarations",
+    "Checking moves the task into its matching Completed folder",
+    "Checking keeps the following task anchored",
+    "Completion and typed notes survive reload",
+    "Restore preserves original task order",
+    "Manual path keeps correct V2 Kepware offsets",
+    "CSV still includes all sixty fields and quoted addresses",
+    "Export retains old notes, new notes and DB fields",
+    "Import restores manual-build progress",
+    "Mobile page has no horizontal overflow with code open",
+    "Manual instructions and code remain available offline",
+    "No JavaScript errors"
+  ],
+  "live_browser": true,
+  "scope": "Live localhost UI, storage and offline tests; clipboard handler checked with a browser stub.",
+  "plc_tested": false
+}

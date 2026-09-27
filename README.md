@@ -23,3 +23,9 @@ python tests/checklist_test.py
 Browser tests require Playwright and Chromium. CI requires real localhost navigation and tests native persistence, import, cached offline reload, and unchanged source downloads. Restricted local test environments can use the injected-document fallback, explicitly reported in test results. Reference-model tests do not compile or execute Siemens SCL.
 
 The publishing workflow builds/tests the page, commits generated files, publishes only the page/manifest/service worker/current source, then checks the live files byte-for-byte. No machine archives or credentials are published.
+
+## Manual CSI build
+
+MM6 now uses hand-created blocks, interface grids and body-only SCL sections. Create the CSI group and main CSI_Reporting FB; CSI2_Report keeps the V2 field layout for Kepware. Do not import or run the old route alongside this one.
+
+manual_steps.py derives every interface row and executable body from the hash-checked V2 source. Only the main FB display name changes; its instance type becomes CSI_Reporting. The original SCL download remains unchanged. `python manual_steps.py --install` installs the idempotent build hook; then run build_html.py, tests/manual_structure_test.py, tests/manual_checklist_test.py and tests/v2_model_test.py. These tests are not a TIA compiler or a live PLC test.

@@ -1,4 +1,4 @@
-const CACHE='machine-reporting-simple-v3-20260925';
+const CACHE='machine-reporting-manual-v4-20260927';
 const HOME=new URL('./index.html',self.location.href).href;
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['./index.html','./manifest.webmanifest','./downloads/MM6_Reporting_V2.scl'])).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('machine-reporting-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));

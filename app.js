@@ -42,6 +42,12 @@ $('#export').onclick=()=>download('machine-checklist-progress.json',JSON.stringi
 $('#import').onchange=async ev=>{const f=ev.target.files[0];if(!f)return;try{if(f.size>3e6)throw Error('File too large');const p=JSON.parse(await f.text());const next=p.version===1?migrate(p):clean(p);if(!confirm('Replace this browser’s checklist with the selected backup?'))return;state=next;save();location.reload();}catch(err){toast('Import failed: '+err.message);}ev.target.value='';};
 $('#collapse').onclick=()=>{$$('details').forEach(d=>{d.open=false;if(d.id)state.open[d.id]=false;});save();window.scrollTo(0,0);};
 $('#refresh').onclick=async()=>{try{if('serviceWorker'in navigator){const reg=await navigator.serviceWorker.getRegistration();await reg?.update();}location.reload();}catch{location.reload();}};
+
+// Preserve retired current-version steps in the existing Earlier records folder.
+const retiredCSI=[...new Set([...Object.keys(state.done),...Object.keys(state.notes)])].filter(id=>!tasks.has(id));
+if(retiredCSI.length){state.legacy??={version:1,done:{},notes:{},configs:{}};state.legacy.done??={};state.legacy.notes??={};for(const id of retiredCSI){if(state.done[id])state.legacy.done[id]=state.done[id];if(state.notes[id])state.legacy.notes[id]=state.notes[id];}}
+document.addEventListener('click',event=>{const button=event.target.closest('[data-copy-code]');if(button){const target=document.getElementById(button.dataset.copyCode);if(target)copyText(target.textContent);}});
+
 build();
 // Exposed only for offline browser regression tests. No network/PLC API.
 window.checklistTest={migrate,clean,build:DATA.build};
