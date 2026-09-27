@@ -3,14 +3,15 @@ from pathlib import Path
 import json,hashlib
 from checklist_data import build_data
 from manual_steps import manual_data
+from csi_branding import rename_data, renamed_source, decorate_markup, write_assets
 R=Path(__file__).parent
-D=manual_data(build_data())
-source=(R/'downloads/MM6_Reporting_V2.scl').read_text(encoding='utf-8')
+D=rename_data(manual_data(build_data()))
+source=renamed_source((R/'downloads/MM6_Reporting_V2.scl').read_text(encoding='utf-8'))
 def js(obj):return json.dumps(obj,ensure_ascii=False).replace('</','<\\/')
 (R/'content.json').write_text(json.dumps(D,ensure_ascii=False,indent=2))
-css=(R/'style.css').read_text();script=(R/'app.js').read_text()
+css=(R/'style.css').read_text()+'\n'+(R/'csi_theme.css').read_text();script=(R/'app.js').read_text()
 markup='''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#17675d"><title>Machine checklist</title><link rel="manifest" href="./manifest.webmanifest"><style>'''+css+'''</style></head><body><header><div class="header-line"><h1>Machine checklist</h1><span class="revision">27 Sep · manual CSI build</span></div><nav aria-label="Jump to checklist"><button data-open="todo-MM6">MM6</button><button data-open="todo-MM4">MM4</button><button data-open="todo-MM5">MM5</button><button data-open="kepware">Kepware</button></nav><div class="progress-row"><span id="progress-text"></span><progress id="progress" value="0" max="25" aria-label="Completed steps"></progress><span id="saved"></span></div></header><main id="app"></main><footer><details id="tools"><summary>Save, import or refresh</summary><div class="tools"><button id="export">Export progress</button><label class="import-label">Import progress<input id="import" type="file" accept=".json,application/json" hidden></label><button id="collapse">Collapse all</button><button id="refresh">Refresh app</button></div><p>Notes and checks stay in this browser. Export to move them to another computer. No PLC connection is made by this page.</p></details><details id="references"><summary>Reference links</summary><div class="references"><a href="https://docs.tia.siemens.cloud/r/en-us/v20/programming-basics/block-calls/instances/single-instances" target="_blank" rel="noopener noreferrer">Siemens: FBs and instance DBs</a><a href="https://docs.tia.siemens.cloud/r/en-us/v21/creating-stl-programs-s7-300-s7-400-s7-1500/inserting-stl-instructions-s7-300-s7-400-s7-1500/inserting-block-calls-in-stl-s7-300-s7-400-s7-1500/manually-inserting-block-calls-s7-300-s7-400-s7-1500" target="_blank" rel="noopener noreferrer">Siemens: insert an STL call</a><a href="https://support.ptc.com/help/kepware/kepware_server/en/kepware/server/designing-project-adding-user-tags.html" target="_blank" rel="noopener noreferrer">PTC: add a Kepware tag</a><a href="https://support.ptc.com/help/kepware/drivers/en/kepware/drivers/SIEMENSTCPIPETHERNET/Standard_S7_300_400_Item_Syntax.html" target="_blank" rel="noopener noreferrer">PTC: Siemens DB addressing</a></div><p>Installed V15/V16 labels may differ from the newer online manuals. Machine mappings and V2 installation details come from the supplied project analyses and MM6 V2 source package.</p></details></footer><div id="toast" role="status" aria-live="polite" hidden></div><noscript>Enable JavaScript to use the checklists.</noscript><script>const DATA='''+js(D)+';const SOURCE='+js(source)+';\n'+script+'''</script></body></html>'''
-(R/'index.html').write_text(markup)
+(R/'index.html').write_text(decorate_markup(markup))
 (R/'manifest.webmanifest').write_text(json.dumps(dict(name='Machine checklist',short_name='Checklist',start_url='./',scope='./',display='standalone',background_color='#f4f6f5',theme_color='#17675d'),indent=2))
 (R/'sw.js').write_text('''const CACHE='machine-reporting-manual-v4-20260927';
 const HOME=new URL('./index.html',self.location.href).href;
@@ -20,3 +21,5 @@ self.addEventListener('fetch',e=>{const u=new URL(e.request.url);if(e.request.me
 (R/'.nojekyll').write_text('')
 print('Built',len(D['groups'])+len(D['kepware']),'groups;',sum(len(g['tasks'])for g in D['groups']+D['kepware']),'steps;',len(markup.encode()),'HTML bytes')
 print('MM6 source SHA256',hashlib.sha256((R/'downloads/MM6_Reporting_V2.scl').read_bytes()).hexdigest())
+
+write_assets(R)

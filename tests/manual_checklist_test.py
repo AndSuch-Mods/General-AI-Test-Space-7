@@ -6,6 +6,7 @@ from functools import partial
 import threading,json,os,sys
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from manual_steps import parse_source,body_sections
+from csi_branding import rename_text
 R=Path(__file__).resolve().parents[1];results=[]
 def ok(label,condition):
     assert condition,label
@@ -54,7 +55,7 @@ with sync_playwright() as p:
     page.locator('#how-MM6-manual-main > summary').click()
     ok('Main declaration sections are distinguished',all(page.locator('#manual-CSI_Reporting-'+name+'-0').count()==1 for name in ['Input','Static','Temp']))
     ok('Eight actual body-only code sections are present',page.locator('pre[data-block="CSI_Reporting"]').count()==8)
-    b=parse_source()['CSI_Reporting'];texts=page.locator('pre[data-block="CSI_Reporting"]').all_text_contents()
+    b=dict(parse_source()['CSI_Reporting']);b['body']=rename_text(b['body']);texts=page.locator('pre[data-block="CSI_Reporting"]').all_text_contents()
     ok('Rendered main logic exactly reconstructs the reference body',''.join(texts)==b['body'])
     summary=page.locator('#manual-body-CSI_Reporting-0 > summary');summary.scroll_into_view_if_needed();y=summary.bounding_box()['y'];summary.click();page.wait_for_timeout(100)
     ok('Opening a code section does not move its heading',abs(summary.bounding_box()['y']-y)<2)

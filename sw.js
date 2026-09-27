@@ -1,5 +1,6 @@
-const CACHE='machine-reporting-manual-v4-20260927';
+const CACHE='machine-reporting-csi-checklist-v5-20260927';
 const HOME=new URL('./index.html',self.location.href).href;
-self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['./index.html','./manifest.webmanifest','./downloads/MM6_Reporting_V2.scl'])).then(()=>self.skipWaiting())));
+const ASSETS=["./index.html", "./manifest.webmanifest", "./checklist-icon.svg", "./checklist-icon-32.png", "./apple-touch-icon.png", "./checklist-icon-192.png", "./checklist-icon-512.png", "./downloads/MM6_CSI_Reporting.scl"];
+self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('machine-reporting-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',e=>{const u=new URL(e.request.url);if(e.request.method!=='GET'||u.origin!==self.location.origin||!u.pathname.startsWith(new URL(self.registration.scope).pathname))return;e.respondWith(fetch(e.request).then(r=>{if(r.ok){const clone=r.clone();e.waitUntil(caches.open(CACHE).then(c=>c.put(e.request,clone)));}return r;}).catch(()=>caches.match(e.request,{ignoreSearch:true}).then(r=>r||(e.request.mode==='navigate'?caches.match(HOME):Response.error()))));});

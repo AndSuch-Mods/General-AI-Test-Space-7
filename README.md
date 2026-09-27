@@ -29,3 +29,9 @@ The publishing workflow builds/tests the page, commits generated files, publishe
 MM6 now uses hand-created blocks, interface grids and body-only SCL sections. Create the CSI group and main CSI_Reporting FB; CSI2_Report keeps the V2 field layout for Kepware. Do not import or run the old route alongside this one.
 
 manual_steps.py derives every interface row and executable body from the hash-checked V2 source. Only the main FB display name changes; its instance type becomes CSI_Reporting. The original SCL download remains unchanged. `python manual_steps.py --install` installs the idempotent build hook; then run build_html.py, tests/manual_structure_test.py, tests/manual_checklist_test.py and tests/v2_model_test.py. These tests are not a TIA compiler or a live PLC test.
+
+## CSI naming and checklist identity
+
+The active manual route now uses CSI_Report, CSI_Setup, CSI_Reporting, CSI_Reporting_DB, CSI_Run, CSI_Startup and CSI_ helpers. csi_branding.py applies a symbol-only mapping after manual_steps.py; field offsets, schema version 2 and all executable behavior are unchanged. The immutable V2 file is retained for derivation/tests only. The optional current source is downloads/MM6_CSI_Reporting.scl, not the old import route. Do not restore CSI2 names in the active page or copied code.
+
+The clipboard/checkmark identity is provided as SVG favicon, PNG favicon, iOS touch icon and installable-app icons. csi_theme.css styles the existing compact checklist without adding tasks. Keep the existing localStorage key, task IDs, notes and recorded DB fields; verify a recorded number belongs to CSI_Report before using it. Test scrolling, persistence, copying and offline operation. Do not change billing settings or enable paid runners. The publishing workflow retains no extra screenshot artifacts.
