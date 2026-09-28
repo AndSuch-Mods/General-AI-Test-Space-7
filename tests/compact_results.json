@@ -1,0 +1,33 @@
+{
+  "passed": 26,
+  "checks": [
+    "Exactly 12 report fields, 48 bytes, requested day/night names",
+    "Screenshot sequence counts exactly one complete cycle",
+    "Screenshot timing is 86.48 seconds within REAL precision",
+    "Secondary close pulse is ignored and next cycle remains active",
+    "Same-scan next start holds zero between-cycle time",
+    "Startup at an extra closing pulse cannot count a short cycle",
+    "Known idle wait survives production mode off for 30 minutes",
+    "Next start holds that waiting interval",
+    "Abort discards unfinished cycle and preserves held time",
+    "valid fault/restart cannot create a false completion",
+    "clock fault/restart cannot create a false completion",
+    "restart fault/restart cannot create a false completion",
+    "TIME_TCK wrap adds 16 ms",
+    "2026-09-28 17:00:00 credits completion only to active scheduled window",
+    "2026-09-29 00:00:00 credits completion only to active scheduled window",
+    "2026-09-29 06:00:00 credits completion only to active scheduled window",
+    "2026-09-29 06:30:00 credits completion only to active scheduled window",
+    "Weekend cycles excluded; both shift totals and held cycle time stay put",
+    "Monday 06:30 replaces only the day shift",
+    "Monday 17:00 replaces the held night shift",
+    "Midnight does not reset the overnight shift",
+    "Total counter saturates without overflow",
+    "Every rung local has a declaration",
+    "All report references point to the 12-field layout",
+    "No writes to original machine or input pins",
+    "Only one new executable block, no helper FB/FC chain"
+  ],
+  "scope": "Python execution of authored LAD records and structural checks only; not Siemens compilation or PLC execution.",
+  "plc_tested": false
+}

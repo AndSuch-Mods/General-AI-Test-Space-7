@@ -1,0 +1,30 @@
+{
+  "passed": 22,
+  "checks": [
+    "All current tasks render",
+    "Forced dark theme remains on",
+    "Old monitoring checks and retired notes survive",
+    "Old layout completion does not mark the 12-tag layout done",
+    "No old DB number is automatically reused",
+    "Report table has exactly twelve entries",
+    "Static heading and byte-zero explanation present",
+    "Day and night shift names are shown",
+    "Completing preserves the following row position",
+    "Completed task moves to its matching folder",
+    "Note, completed state and compact DB survive reload",
+    "Restore puts report step back before setup",
+    "Kepware table uses compact 12-field offsets",
+    "CSV has 12 data rows with day/night names",
+    "Export preserves old notes and new DB separately",
+    "Import restores compact progress",
+    "Expanding rung preserves its heading",
+    "Local variables are introduced at their first rung",
+    "No old helpers or SCL import in active MM6 checklist",
+    "Mobile layout fits viewport",
+    "Compact checklists and rungs remain available offline",
+    "No browser script errors"
+  ],
+  "live_browser": true,
+  "plc_tested": false,
+  "scope": "Live browser/localStorage/offline"
+}
