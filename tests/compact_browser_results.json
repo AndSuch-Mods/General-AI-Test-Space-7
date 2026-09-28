@@ -1,7 +1,9 @@
 {
-  "passed": 22,
+  "passed": 24,
   "checks": [
     "All current tasks render",
+    "Removed setup task keeps its old note",
+    "No setup DB or write-to-enable step remains",
     "Forced dark theme remains on",
     "Old monitoring checks and retired notes survive",
     "Old layout completion does not mark the 12-tag layout done",
@@ -12,7 +14,7 @@
     "Completing preserves the following row position",
     "Completed task moves to its matching folder",
     "Note, completed state and compact DB survive reload",
-    "Restore puts report step back before setup",
+    "Restore puts report step back before the FB",
     "Kepware table uses compact 12-field offsets",
     "CSV has 12 data rows with day/night names",
     "Export preserves old notes and new DB separately",

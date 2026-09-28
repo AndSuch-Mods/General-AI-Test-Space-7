@@ -1,0 +1,29 @@
+{
+  "passed": 21,
+  "base_compact_checks": 26,
+  "checks": [
+    "Only the four period identities are retained in the optimized FB",
+    "Initialized is non-retentive FALSE; live timers/state are non-retentive zero",
+    "No setup DB or commissioning enable bit remains in executable records",
+    "First-call detector is the non-retentive Initialized bit",
+    "Report names and fixed 48-byte layout remain unchanged",
+    "Waiting reboot clears live timers and live display",
+    "Waiting reboot preserves all eleven held/count fields",
+    "Waiting startup-high signals do not create a completion",
+    "Active cycle reboot clears live timers and live display",
+    "Active cycle reboot preserves all eleven held/count fields",
+    "Active cycle startup-high signals do not create a completion",
+    "First qualified robot return synchronizes and starts without counting the unknown cycle",
+    "Following full observed cycle counts once and ignores its extra closing pulse",
+    "Restart into a new day rolls hour/day counts but preserves the same night shift",
+    "Power loss and weekend restart do not zero held shift totals",
+    "Monday restart resets only the new day shift and holds the prior night shift",
+    "Next Monday night shift replaces the held night count",
+    "Retained hour/day identities block backward-clock assignment after restart",
+    "Current guide has retention instructions but no setup/startup-OB task",
+    "Guide keeps the report DB identity and all twelve names",
+    "Guide explains retained period identities and non-retained live state"
+  ],
+  "scope": "Python execution of authored LAD records with simulated non-retentive resets; not TIA compilation, live CPU restart, or power-loss testing.",
+  "plc_tested": false
+}

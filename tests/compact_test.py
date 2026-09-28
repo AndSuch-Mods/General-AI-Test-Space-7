@@ -23,14 +23,12 @@ def arithmetic(s,vals,real=False):
 class Engine:
  def __init__(self):
   self.report={r['name']:float(r['initial'])if r['type']=='Real'else int(r['initial'])for r in SCHEMA}
-  self.setup={'Enable':True,'WiringReviewed':True,'StartupPending':True}
   self.local={r['name']:self.default(r)for r in BLOCK.rows};self.hardware={'%DB200.DBX38.2':True,'%DB200.DBX49.3':True};self.valid=True
  def default(self,r):return r['initial'] if r['initial']is not None else {}if r['type']=='DTL'else False if r['type']=='Bool'else 0
  def get(self,v):
   if not isinstance(v,str):return v
   if v.startswith('#'):d=self.local;key=v[1:]
   elif v.startswith('"CSI_Report".'):d=self.report;key=v.split('.',1)[1]
-  elif v.startswith('"CSI_Setup".'):d=self.setup;key=v.split('.',1)[1]
   elif v.startswith('%'):return self.hardware[v]
   else:raise ValueError(v)
   for k in key.split('.'):d=d[k]
@@ -38,7 +36,6 @@ class Engine:
  def put(self,v,x):
   if v.startswith('#'):d=self.local;key=v[1:]
   elif v.startswith('"CSI_Report".'):d=self.report;key=v.split('.',1)[1]
-  elif v.startswith('"CSI_Setup".'):d=self.setup;key=v.split('.',1)[1]
   else:raise AssertionError('Non-report output '+v)
   assert '.'not in key
   if isinstance(x,int) and not isinstance(x,bool):assert -2147483648<=x<=MAX,(v,x)
@@ -55,7 +52,9 @@ class Engine:
   for r in BLOCK.rows:
    if r['section']=='Temp':self.local[r['name']]=self.default(r)
   self.local.update(CloseCommand=close,RobotPermit=permit,ProductionEligible=production,RobotDataValid=valid,AbortCycle=abort)
-  if restart:self.setup['StartupPending']=True
+  if restart:
+   for r in BLOCK.rows:
+    if r['section']=='Static' and not r.get('retain',False):self.local[r['name']]=self.default(r)
   for n in BLOCK.networks:
    power=self.cond(n['gate'])
    for a in n['actions']:
@@ -133,7 +132,7 @@ ok('Every rung local has a declaration',references<=locals_)
 refs=set(re.findall(r'"CSI_Report"\.(\w+)',json.dumps(BLOCK.networks).replace('\\"','"')))
 ok('All report references point to the 12-field layout',refs<=set(NAMES) and set(NAMES)<=refs)
 outputs=[a['out']for n in BLOCK.networks for a in n['actions']if 'out'in a]
-ok('No writes to original machine or input pins',all(v.startswith(('#','"CSI_Report".','"CSI_Setup".'))for v in outputs) and not any(v in ['#CloseCommand','#RobotPermit','#ProductionEligible','#RobotDataValid','#AbortCycle']for v in outputs))
+ok('No writes to original machine or input pins',all(v.startswith(('#','"CSI_Report".'))for v in outputs) and not any(v in ['#CloseCommand','#RobotPermit','#ProductionEligible','#RobotDataValid','#AbortCycle']for v in outputs))
 ok('Only one new executable block, no helper FB/FC chain',BLOCK.name=='CSI_Reporting' and len(BLOCK.networks)==66)
 report=dict(passed=len(CHECKS),checks=CHECKS,scope='Python execution of authored LAD records and structural checks only; not Siemens compilation or PLC execution.',plc_tested=False)
 Path(__file__).with_name('compact_results.json').write_text(json.dumps(report,indent=2));print(json.dumps(report,indent=2))

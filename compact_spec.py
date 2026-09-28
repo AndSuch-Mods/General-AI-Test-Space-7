@@ -1,7 +1,7 @@
 """Compact MM6 LAD recipe. This is not TIA-compiled code or a PLC download."""
 from dataclasses import dataclass, field
 MAX=2147483647
-BUILD='2026-09-28-compact-day-night-v8'
+BUILD='2026-09-28-compact-autostart-v9'
 NAMES=['PreviousCycleSeconds','BetweenCycleSeconds','PreviousBetweenSeconds','CyclesThisHour','CyclesPreviousHour','CyclesToday','CyclesPreviousDay','DayShiftCurrent','DayShiftPrevious','NightShiftCurrent','NightShiftPrevious','TotalCompleted']
 DESCRIPTIONS=['Last fully observed production cycle, seconds.','Live known wait; zero means no active known wait, not proof of uptime.','Last finished known wait, seconds.','Completions in the current local clock hour.','Last observed closed clock hour.','Completions in the current local calendar day.','Last observed closed calendar day.','Mon–Fri 06:30–17:00; holds until the next scheduled day shift starts.','The preceding day shift, copied when its next scheduled shift starts.','Mon–Thu 17:00–06:00 next day; holds until the next scheduled night shift starts.','The preceding night shift, copied when its next scheduled shift starts.','Accepted complete production cycles since initialization.']
 SCHEMA=[dict(name=n,type='Real' if i<3 else 'DInt',initial='0.0' if i<3 else '0',offset=4*i,kepware_type='Float' if i<3 else 'Long',description=DESCRIPTIONS[i]) for i,n in enumerate(NAMES)]
@@ -10,7 +10,6 @@ def O(*x):return ['or',*x]
 def N(x):return ['not',x]
 def C(a,op,b):return ['cmp',a,op,b]
 def R(n):return '"CSI_Report".'+n
-def S(n):return '"CSI_Setup".'+n
 def move(out,value):return dict(op='MOVE',out=out,inputs={'IN':value})
 def bit(out,on):return dict(op='SET' if on else 'RESET',out=out)
 def math(op,out,a,b,typ='DInt'):return dict(op=op,out=out,inputs={'IN1':a,'IN2':b},type=typ)
@@ -48,8 +47,8 @@ def make_block():
  b.net('Calculate minutes since midnight',True,calc('#MinuteOfDay','IN1 * 60 + IN2',['#HourNumber','#MinuteNumber']))
  b.net('Give each local minute its own number',True,calc('#ClockMinute','IN1 * 1440 + IN2',['#DayNumber','#MinuteOfDay']))
  b.net('Give each local hour its own number',True,calc('#HourKey','IN1 * 24 + IN2',['#DayNumber','#HourNumber']))
- b.coil('Check clock validity and prevent backwards period assignment','#ClockOK',A(O(C('#ClockStatus','==',0),C('#ClockStatus','==',1)),'#DateOK','#DayOK',C('#ClockMinute','>=','#LastClockMinute'),C('#Weekday','>=',1),C('#Weekday','<=',7)))
- b.coil('Detect first call or restart','#Fresh',O(N('#Initialized'),S('StartupPending')))
+ b.coil('Check clock validity and prevent backwards period assignment','#ClockOK',A(O(C('#ClockStatus','==',0),C('#ClockStatus','==',1)),'#DateOK','#DayOK',C('#ClockMinute','>=','#LastClockMinute'),C('#HourKey','>=','#HourSaved'),C('#DayNumber','>=','#DaySaved'),C('#Weekday','>=',1),C('#Weekday','<=',7)))
+ b.coil('Detect first call or restart','#Fresh',N('#Initialized'))
  b.net('Read elapsed RUN milliseconds',True,dict(op='TIME_TCK',out='#TickTime',ret=None))
  b.net('Convert that counter to DINT',True,conv('#TickNow','#TickTime','TIME','DInt'))
  b.net('Start with zero elapsed time for this scan',True,move('#DeltaMs',0))
@@ -62,7 +61,7 @@ def make_block():
  b.net('Default the shift start date to today',True,move('#ShiftDate','#DayNumber'))
  b.net('Use yesterday for the night shift after midnight',A('#NightShift',C('#MinuteOfDay','<',360)),math('SUB','#ShiftDate','#DayNumber',1))
  b.net('Find the next expected minute',True,math('ADD','#NextMinute','#LastClockMinute',1))
- b.coil('Allow monitoring only with valid reviewed inputs','#Allowed',A(S('Enable'),S('WiringReviewed'),'%DB200.DBX38.2','%DB200.DBX49.3','#RobotDataValid',N('#AbortCycle'),'#ClockOK','#TickOK','#Scheduled',O(C('#LastClockMinute','==',-1),C('#ClockMinute','<=','#NextMinute'))))
+ b.coil('Run automatically when the real inputs and schedule are valid','#Allowed',A('%DB200.DBX38.2','%DB200.DBX49.3','#RobotDataValid',N('#AbortCycle'),'#ClockOK','#TickOK','#Scheduled',O(C('#LastClockMinute','==',-1),C('#ClockMinute','<=','#NextMinute'))))
 
  b.phase='Cycle and between-cycle timing'
  b.var('Static','Bool','PrevClose PrevPermit LowSeen',False)
@@ -72,7 +71,7 @@ def make_block():
  b.coil('One-scan closing edge','#CloseRise',A('#CloseCommand',N('#PrevClose'),N('#Fresh')))
  b.coil('One-scan robot permission edge','#PermitRise',A('#RobotPermit',N('#PrevPermit'),N('#Fresh')))
  b.coil('Discard an uncertain interval, not held history','#Drop',O(N('#Allowed'),A(C('#State','!=',1),N('#ProductionEligible')),A(C('#State','==',1),O(N('#RobotPermit'),A('#CloseRise',N('#ProductionEligible')))),C('#CycleMs','>',86400000),C('#WaitMs','>',86400000)))
- b.net('Reset only the live observation','#Drop',move('#State',0),move('#CycleMs',0),move('#WaitMs',0),bit('#LowSeen',False),note='This does not reset any held time or production counter.')
+ b.net('Reset only the live observation','#Drop',move('#State',0),move('#CycleMs',0),move('#WaitMs',0),bit('#LowSeen',False),move(R('BetweenCycleSeconds'),0.0),note='First call after startup clears only live timing. Held times and counts are not cleared here.')
  b.net('Remember robot permission low in a qualified sequence',A('#Allowed','#ProductionEligible',N('#RobotPermit'),O(C('#State','==',0),C('#State','==',2))),bit('#LowSeen',True))
  b.net('Add this scan to the active cycle',A('#Allowed',C('#State','==',2)),math('ADD','#CycleMs','#CycleMs','#DeltaMs'))
  b.net('Add this scan to the known wait',A('#Allowed',C('#State','==',1)),math('ADD','#WaitMs','#WaitMs','#DeltaMs'))
@@ -105,7 +104,7 @@ def make_block():
  for current,window in [('CyclesThisHour',True),('CyclesToday',True),('DayShiftCurrent','#DayShift'),('NightShiftCurrent','#NightShift'),('TotalCompleted',True)]:
   b.net('Add one to '+current,A('#Complete',window,C(R(current),'<',MAX)),math('ADD',R(current),R(current),1),note='Count the completion AFTER storing/resetting the relevant periods. Stop at the DINT limit rather than wrap negative.')
  b.phase='Remember inputs for the next scan'
- b.net('Remember both inputs and the elapsed counter',True,move('#PrevTick','#TickNow'),dict(op='BOOL_COPY',out='#PrevClose',inputs={'IN':'#CloseCommand'}),dict(op='BOOL_COPY',out='#PrevPermit',inputs={'IN':'#RobotPermit'}),bit('#Initialized',True),bit(S('StartupPending'),False))
+ b.net('Remember both inputs and the elapsed counter',True,move('#PrevTick','#TickNow'),dict(op='BOOL_COPY',out='#PrevClose',inputs={'IN':'#CloseCommand'}),dict(op='BOOL_COPY',out='#PrevPermit',inputs={'IN':'#RobotPermit'}),bit('#Initialized',True))
  b.net('Remember the last valid local minute','#ClockOK',move('#LastClockMinute','#ClockMinute'))
  return b
 BLOCK=make_block()
@@ -113,6 +112,9 @@ BLOCK=make_block()
 last=BLOCK.networks[-2];copies=[x for x in last['actions'] if x['op']=='BOOL_COPY'];last['actions']=[x for x in last['actions'] if x['op']!='BOOL_COPY']
 for a in copies:BLOCK.coil('Remember '+a['out']+' for the next scan',a['out'],a['inputs']['IN'])
 for i,n in enumerate(BLOCK.networks):n['number']=i+1
+RETAINED_KEYS=('HourSaved','DaySaved','DayShiftSaved','NightShiftSaved')
+for row in BLOCK.rows:
+ if row['section']=='Static':row['retain']=row['name'] in RETAINED_KEYS
 BLOCKS={BLOCK.name:BLOCK}
 if __name__=='__main__':
  print(len(SCHEMA),'report fields;',len(BLOCK.rows),'internal/interface rows;',len(BLOCK.networks),'networks')

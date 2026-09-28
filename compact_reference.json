@@ -1,5 +1,5 @@
 {
-  "build": "2026-09-28-compact-day-night-v8",
+  "build": "2026-09-28-compact-autostart-v9",
   "schema": [
     {
       "name": "PreviousCycleSeconds",
@@ -148,7 +148,8 @@
           "type": "Bool",
           "initial": false,
           "comment": "",
-          "phase": "Clock and schedule"
+          "phase": "Clock and schedule",
+          "retain": false
         },
         {
           "section": "Static",
@@ -156,7 +157,8 @@
           "type": "DInt",
           "initial": 0,
           "comment": "",
-          "phase": "Clock and schedule"
+          "phase": "Clock and schedule",
+          "retain": false
         },
         {
           "section": "Static",
@@ -164,7 +166,8 @@
           "type": "DInt",
           "initial": -1,
           "comment": "",
-          "phase": "Clock and schedule"
+          "phase": "Clock and schedule",
+          "retain": false
         },
         {
           "section": "Temp",
@@ -364,7 +367,8 @@
           "type": "Bool",
           "initial": false,
           "comment": "",
-          "phase": "Cycle and between-cycle timing"
+          "phase": "Cycle and between-cycle timing",
+          "retain": false
         },
         {
           "section": "Static",
@@ -372,7 +376,8 @@
           "type": "Bool",
           "initial": false,
           "comment": "",
-          "phase": "Cycle and between-cycle timing"
+          "phase": "Cycle and between-cycle timing",
+          "retain": false
         },
         {
           "section": "Static",
@@ -380,7 +385,8 @@
           "type": "Bool",
           "initial": false,
           "comment": "",
-          "phase": "Cycle and between-cycle timing"
+          "phase": "Cycle and between-cycle timing",
+          "retain": false
         },
         {
           "section": "Static",
@@ -388,7 +394,8 @@
           "type": "DInt",
           "initial": 0,
           "comment": "State: 0 synchronize, 1 between cycles, 2 timing a cycle.",
-          "phase": "Cycle and between-cycle timing"
+          "phase": "Cycle and between-cycle timing",
+          "retain": false
         },
         {
           "section": "Static",
@@ -396,7 +403,8 @@
           "type": "DInt",
           "initial": 0,
           "comment": "State: 0 synchronize, 1 between cycles, 2 timing a cycle.",
-          "phase": "Cycle and between-cycle timing"
+          "phase": "Cycle and between-cycle timing",
+          "retain": false
         },
         {
           "section": "Static",
@@ -404,7 +412,8 @@
           "type": "DInt",
           "initial": 0,
           "comment": "State: 0 synchronize, 1 between cycles, 2 timing a cycle.",
-          "phase": "Cycle and between-cycle timing"
+          "phase": "Cycle and between-cycle timing",
+          "retain": false
         },
         {
           "section": "Temp",
@@ -484,7 +493,8 @@
           "type": "DInt",
           "initial": -1,
           "comment": "Keep these with the reporting counts if configuring retention.",
-          "phase": "Hourly, daily and shift counts"
+          "phase": "Hourly, daily and shift counts",
+          "retain": true
         },
         {
           "section": "Static",
@@ -492,7 +502,8 @@
           "type": "DInt",
           "initial": -1,
           "comment": "Keep these with the reporting counts if configuring retention.",
-          "phase": "Hourly, daily and shift counts"
+          "phase": "Hourly, daily and shift counts",
+          "retain": true
         },
         {
           "section": "Static",
@@ -500,7 +511,8 @@
           "type": "DInt",
           "initial": -1,
           "comment": "Keep these with the reporting counts if configuring retention.",
-          "phase": "Hourly, daily and shift counts"
+          "phase": "Hourly, daily and shift counts",
+          "retain": true
         },
         {
           "section": "Static",
@@ -508,7 +520,8 @@
           "type": "DInt",
           "initial": -1,
           "comment": "Keep these with the reporting counts if configuring retention.",
-          "phase": "Hourly, daily and shift counts"
+          "phase": "Hourly, daily and shift counts",
+          "retain": true
         },
         {
           "section": "Temp",
@@ -736,6 +749,18 @@
             ],
             [
               "cmp",
+              "#HourKey",
+              ">=",
+              "#HourSaved"
+            ],
+            [
+              "cmp",
+              "#DayNumber",
+              ">=",
+              "#DaySaved"
+            ],
+            [
+              "cmp",
               "#Weekday",
               ">=",
               1
@@ -760,12 +785,8 @@
           "title": "Detect first call or restart",
           "phase": "Clock and schedule",
           "gate": [
-            "or",
-            [
-              "not",
-              "#Initialized"
-            ],
-            "\"CSI_Setup\".StartupPending"
+            "not",
+            "#Initialized"
           ],
           "actions": [
             {
@@ -1102,12 +1123,10 @@
         },
         {
           "number": 24,
-          "title": "Allow monitoring only with valid reviewed inputs",
+          "title": "Run automatically when the real inputs and schedule are valid",
           "phase": "Clock and schedule",
           "gate": [
             "and",
-            "\"CSI_Setup\".Enable",
-            "\"CSI_Setup\".WiringReviewed",
             "%DB200.DBX38.2",
             "%DB200.DBX49.3",
             "#RobotDataValid",
@@ -1288,9 +1307,16 @@
             {
               "op": "RESET",
               "out": "#LowSeen"
+            },
+            {
+              "op": "MOVE",
+              "out": "\"CSI_Report\".BetweenCycleSeconds",
+              "inputs": {
+                "IN": 0.0
+              }
             }
           ],
-          "note": "This does not reset any held time or production counter."
+          "note": "First call after startup clears only live timing. Held times and counts are not cleared here."
         },
         {
           "number": 29,
@@ -2141,10 +2167,6 @@
             {
               "op": "SET",
               "out": "#Initialized"
-            },
-            {
-              "op": "RESET",
-              "out": "\"CSI_Setup\".StartupPending"
             }
           ],
           "note": ""
