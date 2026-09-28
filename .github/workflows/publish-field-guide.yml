@@ -3,6 +3,9 @@ on:
   push:
     branches: [main]
     paths:
+      - input_notes.py
+      - input_mapping_evidence.md
+      - tests/input_notes_test.py
       - machine_rollout.py
       - machine_maps.js
       - tests/rollout_test.py
@@ -38,62 +41,50 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-      - name: Install reviewed machine naming and copy checklists
+      - name: Install documentation-only input explanation overlay
         run: |
-          python3 - <<'PY'
-          import base64, hashlib, io, lzma, tarfile
-          from pathlib import Path
-          parts=[Path('_update/machines-v11-%d.b64'%i) for i in (1,2,3)]
-          if any(p.exists() for p in parts):
-              assert all(p.exists() for p in parts), 'Incomplete machine checklist update'
-              packed=base64.b64decode(''.join(p.read_text().strip() for p in parts),validate=True)
-              assert hashlib.sha256(packed).hexdigest()=='df93bc6784d91d69948743bc65a41dd94dee3dcd8a57994792c01b0a830eb57c'
-              allowed={'machine_rollout.py','machine_maps.js','tests/rollout_test.py'}
-              with tarfile.open(fileobj=io.BytesIO(lzma.decompress(packed)),mode='r:') as archive:
-                  assert {m.name for m in archive.getmembers()}==allowed
-                  for member in archive.getmembers():
-                      path=Path(member.name)
-                      assert member.isfile() and not path.is_absolute() and '..' not in path.parts
-                      path.parent.mkdir(parents=True,exist_ok=True)
-                      path.write_bytes(archive.extractfile(member).read())
-              for part in parts:part.unlink()
-              print('Reviewed machine checklist checksum verified.')
-          PY
           python3 machine_rollout.py --install
+          python3 input_notes.py --install
       - name: Install build and browser tools
         run: |
           python3 -m pip install --disable-pip-version-check Pillow playwright
           python3 -m playwright install --with-deps chromium
-      - name: Verify the unchanged MM6 ladder and restart behavior
+      - name: Verify unchanged MM6 ladder and restart behavior
         run: |
           CSI_SKIP_ROLLOUT=1 python3 build_html.py
           python3 tests/restart_test.py
           node --check app.js
           node --check machine_maps.js
-      - name: Check existing compact-browser behavior before the naming overlay
+      - name: Check existing compact-browser behavior
         env:
           REQUIRE_LIVE_BROWSER: '1'
         run: python3 tests/compact_browser_test.py
-      - name: Build and test machine names, copying instructions and separate tag maps
+      - name: Verify the existing machine-name and copy guide
+        env:
+          REQUIRE_LIVE_BROWSER: '1'
+        run: |
+          CSI_SKIP_INPUT_NOTES=1 python3 build_html.py
+          python3 tests/rollout_test.py
+      - name: Build and verify English input notes and source limits
         env:
           REQUIRE_LIVE_BROWSER: '1'
         run: |
           python3 build_html.py
-          python3 tests/rollout_test.py
-      - name: Save reviewed files and generated page
+          python3 tests/input_notes_test.py
+      - name: Save generated page and test results
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add machine_rollout.py machine_maps.js tests/rollout_test.py tests/rollout_results.json tests/restart_results.json tests/compact_results.json tests/compact_browser_results.json build_html.py README.md AGENTS.md index.html content.json compact_reference.json ladder_spec.json machine_rollout_reference.json sw.js manifest.webmanifest .nojekyll
+          git add tests/input_notes_results.json tests/rollout_results.json tests/restart_results.json tests/compact_results.json tests/compact_browser_results.json build_html.py README.md AGENTS.md index.html content.json compact_reference.json ladder_spec.json machine_rollout_reference.json sw.js manifest.webmanifest .nojekyll
           git add -u
           if ! git diff --cached --quiet; then
-            git commit -m 'Publish MM4-MM6 block names and target-aware copy checklists'
+            git commit -m 'Publish sourced call-input meanings and pending robot-quality check'
             git push
           fi
       - name: Prepare the public app
         run: |
           mkdir -p _site
-          cp index.html sw.js manifest.webmanifest .nojekyll compact_reference.json ladder_spec.json machine_rollout_reference.json checklist-icon.svg checklist-icon-32.png checklist-icon-192.png checklist-icon-512.png apple-touch-icon.png _site/
+          cp index.html sw.js manifest.webmanifest .nojekyll compact_reference.json ladder_spec.json machine_rollout_reference.json input_mapping_evidence.md checklist-icon.svg checklist-icon-32.png checklist-icon-192.png checklist-icon-512.png apple-touch-icon.png _site/
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
@@ -101,18 +92,18 @@ jobs:
       - name: Publish the checklist
         id: deployment
         uses: actions/deploy-pages@v4
-      - name: Verify published machine checklists
+      - name: Verify published input guide
         run: |
           python3 - <<'PY'
           from pathlib import Path
           from urllib.request import Request,urlopen
           import hashlib,json,os,time
           base='https://andsuch-mods.github.io/General-AI-Test-Space-7/'
-          for name in ['index.html','sw.js','manifest.webmanifest','compact_reference.json','ladder_spec.json','machine_rollout_reference.json']:
+          for name in ['index.html','sw.js','manifest.webmanifest','compact_reference.json','ladder_spec.json','machine_rollout_reference.json','input_mapping_evidence.md']:
               expected=Path(name).read_bytes()
               for attempt in range(12):
                   try:
-                      request=Request(base+name+'?verify='+os.environ['GITHUB_SHA'],headers={'User-Agent':'CSI-machine-checklist-verification'})
+                      request=Request(base+name+'?verify='+os.environ['GITHUB_SHA'],headers={'User-Agent':'CSI-input-guide-verification'})
                       with urlopen(request,timeout=20) as response:
                           actual=response.read()
                           assert response.status==200
@@ -123,13 +114,11 @@ jobs:
                       if attempt==11:raise
                       print('Retry:',name,exc)
                       time.sleep(10)
-          browser=json.loads(Path('tests/rollout_results.json').read_text())
-          model=json.loads(Path('tests/restart_results.json').read_text())
-          assert browser['live_browser'] is True
+          inputs=json.loads(Path('tests/input_notes_results.json').read_text())
+          assert inputs['live_browser'] is True
           with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as summary:
               summary.write('Published and verified: '+base+'\n\n')
-              summary.write('MM6 uses CSI_Report_MM6, CSI_Reporting_MM6 and CSI_Reporting_MM6_DB. Its first four tasks and all 66 networks change block names only; 12 report fields and offsets are unchanged.\n\n')
-              summary.write('MM4 and MM5 have independent observation, compatibility, copy, rename, instance, retention, download-review and acceptance checklists, plus independent Kepware DB maps. A WinLC target requires an already reviewed target-compatible donor or a separate legacy adaptation; this workflow does not supply a complete legacy rung conversion.\n\n')
-              summary.write(str(model['base_compact_checks'])+' base model checks, '+str(model['passed'])+' restart checks and '+str(browser['passed'])+' machine-guide structure/browser checks passed. No Siemens compilation, PLC execution or live machine verification was performed.\n\n')
-              summary.write('User notes, MM6 completed work, dark mode, scrolling and offline use preserved. No extra screenshot/test artifacts retained; required Pages artifact has one-day retention. No billing or PLC settings changed.\n')
+              summary.write('English explanations for all five FB inputs; M50.2/M50.3 mode sources and DB20.DBX0.1 class-1 sequencer-reset source traced in both supplied archives. No single existing RobotDataValid bit is claimed. MM6 has a conditional read-only GET_DIAG recipe after verifying the current input submodule; legacy MM4/MM5 quality mapping is still unresolved.\n\n')
+              summary.write(str(inputs['passed'])+' input-note checks passed in addition to prior restart, compact-browser and rollout regressions. The first seven MM6 tasks, 66 FB networks, 12 reporting fields and offsets were not changed. No TIA compilation or hardware diagnostics testing was performed.\n\n')
+              summary.write('No extra screenshot/test artifacts retained; required Pages artifact retained for one day. No PLC settings, machine bits or billing settings changed.\n')
           PY
