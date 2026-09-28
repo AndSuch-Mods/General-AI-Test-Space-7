@@ -1,0 +1,136 @@
+{
+  "build": "2026-09-28-mm4-mm5-mm6-rollout-v11",
+  "report_schema": [
+    {
+      "name": "PreviousCycleSeconds",
+      "type": "Real",
+      "initial": "0.0",
+      "offset": 0,
+      "kepware_type": "Float",
+      "description": "Last fully observed production cycle, seconds."
+    },
+    {
+      "name": "BetweenCycleSeconds",
+      "type": "Real",
+      "initial": "0.0",
+      "offset": 4,
+      "kepware_type": "Float",
+      "description": "Live known wait; zero means no active known wait, not proof of uptime."
+    },
+    {
+      "name": "PreviousBetweenSeconds",
+      "type": "Real",
+      "initial": "0.0",
+      "offset": 8,
+      "kepware_type": "Float",
+      "description": "Last finished known wait, seconds."
+    },
+    {
+      "name": "CyclesThisHour",
+      "type": "DInt",
+      "initial": "0",
+      "offset": 12,
+      "kepware_type": "Long",
+      "description": "Completions in the current local clock hour."
+    },
+    {
+      "name": "CyclesPreviousHour",
+      "type": "DInt",
+      "initial": "0",
+      "offset": 16,
+      "kepware_type": "Long",
+      "description": "Last observed closed clock hour."
+    },
+    {
+      "name": "CyclesToday",
+      "type": "DInt",
+      "initial": "0",
+      "offset": 20,
+      "kepware_type": "Long",
+      "description": "Completions in the current local calendar day."
+    },
+    {
+      "name": "CyclesPreviousDay",
+      "type": "DInt",
+      "initial": "0",
+      "offset": 24,
+      "kepware_type": "Long",
+      "description": "Last observed closed calendar day."
+    },
+    {
+      "name": "DayShiftCurrent",
+      "type": "DInt",
+      "initial": "0",
+      "offset": 28,
+      "kepware_type": "Long",
+      "description": "Mon\u2013Fri 06:30\u201317:00; holds until the next scheduled day shift starts."
+    },
+    {
+      "name": "DayShiftPrevious",
+      "type": "DInt",
+      "initial": "0",
+      "offset": 32,
+      "kepware_type": "Long",
+      "description": "The preceding day shift, copied when its next scheduled shift starts."
+    },
+    {
+      "name": "NightShiftCurrent",
+      "type": "DInt",
+      "initial": "0",
+      "offset": 36,
+      "kepware_type": "Long",
+      "description": "Mon\u2013Thu 17:00\u201306:00 next day; holds until the next scheduled night shift starts."
+    },
+    {
+      "name": "NightShiftPrevious",
+      "type": "DInt",
+      "initial": "0",
+      "offset": 40,
+      "kepware_type": "Long",
+      "description": "The preceding night shift, copied when its next scheduled shift starts."
+    },
+    {
+      "name": "TotalCompleted",
+      "type": "DInt",
+      "initial": "0",
+      "offset": 44,
+      "kepware_type": "Long",
+      "description": "Accepted complete production cycles since initialization."
+    }
+  ],
+  "machines": {
+    "MM4": {
+      "report": "CSI_Report_MM4",
+      "fb": "CSI_Reporting_MM4",
+      "instance": "CSI_Reporting_MM4_DB",
+      "close": "%DB98.DBX112.7",
+      "permit": "%DB94.DBX29.4",
+      "output": "Q44.0",
+      "raw": "I505.7",
+      "copy_requires": "Target-compatible donor and verified event behavior; WinLC requires a separately reviewed legacy adaptation.",
+      "same_member_names": true
+    },
+    "MM5": {
+      "report": "CSI_Report_MM5",
+      "fb": "CSI_Reporting_MM5",
+      "instance": "CSI_Reporting_MM5_DB",
+      "close": "%DB98.DBX112.7",
+      "permit": "%DB94.DBX29.4",
+      "output": "Q44.0",
+      "raw": "I505.7",
+      "copy_requires": "Target-compatible donor and verified event behavior; WinLC requires a separately reviewed legacy adaptation.",
+      "same_member_names": true
+    },
+    "MM6": {
+      "report": "CSI_Report_MM6",
+      "fb": "CSI_Reporting_MM6",
+      "instance": "CSI_Reporting_MM6_DB",
+      "close": "%DB98.DBX112.7",
+      "permit": "%DB94.DBX29.6",
+      "output": "Q34.0",
+      "raw": "I705.7",
+      "copy_requires": "Current MM6 reference, not TIA-compiled or PLC-tested.",
+      "same_member_names": true
+    }
+  }
+}

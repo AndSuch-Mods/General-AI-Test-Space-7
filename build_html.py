@@ -32,3 +32,6 @@ finalize(R)
 finalize_compact(R)
 
 finalize_retention(R)
+
+from machine_rollout import finalize_rollout
+finalize_rollout(R)

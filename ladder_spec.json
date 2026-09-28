@@ -1,5 +1,5 @@
 {
-  "build": "2026-09-28-compact-autostart-v9",
+  "build": "2026-09-28-mm4-mm5-mm6-rollout-v11",
   "schema": [
     {
       "name": "PreviousCycleSeconds",
@@ -99,7 +99,7 @@
     }
   ],
   "blocks": {
-    "CSI_Reporting": {
+    "CSI_Reporting_MM6": {
       "kind": "FB",
       "rows": [
         {
@@ -1310,7 +1310,7 @@
             },
             {
               "op": "MOVE",
-              "out": "\"CSI_Report\".BetweenCycleSeconds",
+              "out": "\"CSI_Report_MM6\".BetweenCycleSeconds",
               "inputs": {
                 "IN": 0.0
               }
@@ -1502,7 +1502,7 @@
           "actions": [
             {
               "op": "MOVE",
-              "out": "\"CSI_Report\".PreviousCycleSeconds",
+              "out": "\"CSI_Report_MM6\".PreviousCycleSeconds",
               "inputs": {
                 "IN": "#SecondsValue"
               }
@@ -1646,7 +1646,7 @@
           "actions": [
             {
               "op": "DIV",
-              "out": "\"CSI_Report\".BetweenCycleSeconds",
+              "out": "\"CSI_Report_MM6\".BetweenCycleSeconds",
               "inputs": {
                 "IN1": "#MsReal",
                 "IN2": 1000.0
@@ -1664,9 +1664,9 @@
           "actions": [
             {
               "op": "MOVE",
-              "out": "\"CSI_Report\".PreviousBetweenSeconds",
+              "out": "\"CSI_Report_MM6\".PreviousBetweenSeconds",
               "inputs": {
-                "IN": "\"CSI_Report\".BetweenCycleSeconds"
+                "IN": "\"CSI_Report_MM6\".BetweenCycleSeconds"
               }
             }
           ],
@@ -1719,7 +1719,7 @@
           "actions": [
             {
               "op": "MOVE",
-              "out": "\"CSI_Report\".BetweenCycleSeconds",
+              "out": "\"CSI_Report_MM6\".BetweenCycleSeconds",
               "inputs": {
                 "IN": 0.0
               }
@@ -1767,9 +1767,9 @@
           "actions": [
             {
               "op": "MOVE",
-              "out": "\"CSI_Report\".CyclesPreviousHour",
+              "out": "\"CSI_Report_MM6\".CyclesPreviousHour",
               "inputs": {
-                "IN": "\"CSI_Report\".CyclesThisHour"
+                "IN": "\"CSI_Report_MM6\".CyclesThisHour"
               }
             }
           ],
@@ -1783,7 +1783,7 @@
           "actions": [
             {
               "op": "MOVE",
-              "out": "\"CSI_Report\".CyclesThisHour",
+              "out": "\"CSI_Report_MM6\".CyclesThisHour",
               "inputs": {
                 "IN": 0
               }
@@ -1838,9 +1838,9 @@
           "actions": [
             {
               "op": "MOVE",
-              "out": "\"CSI_Report\".CyclesPreviousDay",
+              "out": "\"CSI_Report_MM6\".CyclesPreviousDay",
               "inputs": {
-                "IN": "\"CSI_Report\".CyclesToday"
+                "IN": "\"CSI_Report_MM6\".CyclesToday"
               }
             }
           ],
@@ -1854,7 +1854,7 @@
           "actions": [
             {
               "op": "MOVE",
-              "out": "\"CSI_Report\".CyclesToday",
+              "out": "\"CSI_Report_MM6\".CyclesToday",
               "inputs": {
                 "IN": 0
               }
@@ -1909,9 +1909,9 @@
           "actions": [
             {
               "op": "MOVE",
-              "out": "\"CSI_Report\".DayShiftPrevious",
+              "out": "\"CSI_Report_MM6\".DayShiftPrevious",
               "inputs": {
-                "IN": "\"CSI_Report\".DayShiftCurrent"
+                "IN": "\"CSI_Report_MM6\".DayShiftCurrent"
               }
             }
           ],
@@ -1925,7 +1925,7 @@
           "actions": [
             {
               "op": "MOVE",
-              "out": "\"CSI_Report\".DayShiftCurrent",
+              "out": "\"CSI_Report_MM6\".DayShiftCurrent",
               "inputs": {
                 "IN": 0
               }
@@ -1980,9 +1980,9 @@
           "actions": [
             {
               "op": "MOVE",
-              "out": "\"CSI_Report\".NightShiftPrevious",
+              "out": "\"CSI_Report_MM6\".NightShiftPrevious",
               "inputs": {
-                "IN": "\"CSI_Report\".NightShiftCurrent"
+                "IN": "\"CSI_Report_MM6\".NightShiftCurrent"
               }
             }
           ],
@@ -1996,7 +1996,7 @@
           "actions": [
             {
               "op": "MOVE",
-              "out": "\"CSI_Report\".NightShiftCurrent",
+              "out": "\"CSI_Report_MM6\".NightShiftCurrent",
               "inputs": {
                 "IN": 0
               }
@@ -2021,7 +2021,7 @@
             true,
             [
               "cmp",
-              "\"CSI_Report\".CyclesThisHour",
+              "\"CSI_Report_MM6\".CyclesThisHour",
               "<",
               2147483647
             ]
@@ -2029,9 +2029,9 @@
           "actions": [
             {
               "op": "ADD",
-              "out": "\"CSI_Report\".CyclesThisHour",
+              "out": "\"CSI_Report_MM6\".CyclesThisHour",
               "inputs": {
-                "IN1": "\"CSI_Report\".CyclesThisHour",
+                "IN1": "\"CSI_Report_MM6\".CyclesThisHour",
                 "IN2": 1
               },
               "type": "DInt"
@@ -2049,7 +2049,7 @@
             true,
             [
               "cmp",
-              "\"CSI_Report\".CyclesToday",
+              "\"CSI_Report_MM6\".CyclesToday",
               "<",
               2147483647
             ]
@@ -2057,9 +2057,9 @@
           "actions": [
             {
               "op": "ADD",
-              "out": "\"CSI_Report\".CyclesToday",
+              "out": "\"CSI_Report_MM6\".CyclesToday",
               "inputs": {
-                "IN1": "\"CSI_Report\".CyclesToday",
+                "IN1": "\"CSI_Report_MM6\".CyclesToday",
                 "IN2": 1
               },
               "type": "DInt"
@@ -2077,7 +2077,7 @@
             "#DayShift",
             [
               "cmp",
-              "\"CSI_Report\".DayShiftCurrent",
+              "\"CSI_Report_MM6\".DayShiftCurrent",
               "<",
               2147483647
             ]
@@ -2085,9 +2085,9 @@
           "actions": [
             {
               "op": "ADD",
-              "out": "\"CSI_Report\".DayShiftCurrent",
+              "out": "\"CSI_Report_MM6\".DayShiftCurrent",
               "inputs": {
-                "IN1": "\"CSI_Report\".DayShiftCurrent",
+                "IN1": "\"CSI_Report_MM6\".DayShiftCurrent",
                 "IN2": 1
               },
               "type": "DInt"
@@ -2105,7 +2105,7 @@
             "#NightShift",
             [
               "cmp",
-              "\"CSI_Report\".NightShiftCurrent",
+              "\"CSI_Report_MM6\".NightShiftCurrent",
               "<",
               2147483647
             ]
@@ -2113,9 +2113,9 @@
           "actions": [
             {
               "op": "ADD",
-              "out": "\"CSI_Report\".NightShiftCurrent",
+              "out": "\"CSI_Report_MM6\".NightShiftCurrent",
               "inputs": {
-                "IN1": "\"CSI_Report\".NightShiftCurrent",
+                "IN1": "\"CSI_Report_MM6\".NightShiftCurrent",
                 "IN2": 1
               },
               "type": "DInt"
@@ -2133,7 +2133,7 @@
             true,
             [
               "cmp",
-              "\"CSI_Report\".TotalCompleted",
+              "\"CSI_Report_MM6\".TotalCompleted",
               "<",
               2147483647
             ]
@@ -2141,9 +2141,9 @@
           "actions": [
             {
               "op": "ADD",
-              "out": "\"CSI_Report\".TotalCompleted",
+              "out": "\"CSI_Report_MM6\".TotalCompleted",
               "inputs": {
-                "IN1": "\"CSI_Report\".TotalCompleted",
+                "IN1": "\"CSI_Report_MM6\".TotalCompleted",
                 "IN2": 1
               },
               "type": "DInt"
@@ -2215,5 +2215,8 @@
         }
       ]
     }
-  }
+  },
+  "machine": "MM6",
+  "report_db": "CSI_Report_MM6",
+  "instance_db": "CSI_Reporting_MM6_DB"
 }
