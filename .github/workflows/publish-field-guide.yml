@@ -1,10 +1,14 @@
-name: Publish compact CSI checklist
+name: Publish machine CSI checklists
 on:
   push:
     branches: [main]
     paths:
+      - machine_rollout.py
+      - machine_maps.js
+      - tests/rollout_test.py
       - compact_spec.py
       - compact_steps.py
+      - retention_notes.py
       - restart_update.py
       - tests/restart_test.py
       - tests/compact_test.py
@@ -34,16 +38,17 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-      - name: Install reviewed automatic restart update
+      - name: Install reviewed machine naming and copy checklists
         run: |
           python3 - <<'PY'
           import base64, hashlib, io, lzma, tarfile
           from pathlib import Path
-          part=Path('_update/restart-20260928.b64')
-          if part.exists():
-              packed=base64.b64decode(part.read_text().strip(),validate=True)
-              assert hashlib.sha256(packed).hexdigest()=='6098d3b9fab81577ccfbb29891974d9bc4ddc8fe7d9b9f8a5202f57377b528fd'
-              allowed={'restart_update.py','tests/restart_test.py'}
+          parts=[Path('_update/machines-v11-%d.b64'%i) for i in (1,2,3)]
+          if any(p.exists() for p in parts):
+              assert all(p.exists() for p in parts), 'Incomplete machine checklist update'
+              packed=base64.b64decode(''.join(p.read_text().strip() for p in parts),validate=True)
+              assert hashlib.sha256(packed).hexdigest()=='df93bc6784d91d69948743bc65a41dd94dee3dcd8a57994792c01b0a830eb57c'
+              allowed={'machine_rollout.py','machine_maps.js','tests/rollout_test.py'}
               with tarfile.open(fileobj=io.BytesIO(lzma.decompress(packed)),mode='r:') as archive:
                   assert {m.name for m in archive.getmembers()}==allowed
                   for member in archive.getmembers():
@@ -51,37 +56,44 @@ jobs:
                       assert member.isfile() and not path.is_absolute() and '..' not in path.parts
                       path.parent.mkdir(parents=True,exist_ok=True)
                       path.write_bytes(archive.extractfile(member).read())
-              part.unlink()
+              for part in parts:part.unlink()
+              print('Reviewed machine checklist checksum verified.')
           PY
-          python3 restart_update.py
-          python3 compact_steps.py --install
+          python3 machine_rollout.py --install
       - name: Install build and browser tools
         run: |
           python3 -m pip install --disable-pip-version-check Pillow playwright
           python3 -m playwright install --with-deps chromium
-      - name: Build and test compact timing and retained restart behavior
+      - name: Verify the unchanged MM6 ladder and restart behavior
         run: |
-          python3 build_html.py
+          CSI_SKIP_ROLLOUT=1 python3 build_html.py
           python3 tests/restart_test.py
           node --check app.js
-      - name: Verify browser checklist and unchanged 12-field map
+          node --check machine_maps.js
+      - name: Check existing compact-browser behavior before the naming overlay
         env:
           REQUIRE_LIVE_BROWSER: '1'
         run: python3 tests/compact_browser_test.py
+      - name: Build and test machine names, copying instructions and separate tag maps
+        env:
+          REQUIRE_LIVE_BROWSER: '1'
+        run: |
+          python3 build_html.py
+          python3 tests/rollout_test.py
       - name: Save reviewed files and generated page
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add restart_update.py tests/restart_test.py tests/restart_results.json compact_spec.py compact_steps.py tests/compact_test.py tests/compact_browser_test.py tests/compact_results.json tests/compact_browser_results.json app.js build_html.py README.md AGENTS.md index.html content.json compact_reference.json ladder_spec.json sw.js manifest.webmanifest .nojekyll
+          git add machine_rollout.py machine_maps.js tests/rollout_test.py tests/rollout_results.json tests/restart_results.json tests/compact_results.json tests/compact_browser_results.json build_html.py README.md AGENTS.md index.html content.json compact_reference.json ladder_spec.json machine_rollout_reference.json sw.js manifest.webmanifest .nojekyll
           git add -u
           if ! git diff --cached --quiet; then
-            git commit -m 'Remove setup DB; reset live state on startup and retain reporting history'
+            git commit -m 'Publish MM4-MM6 block names and target-aware copy checklists'
             git push
           fi
       - name: Prepare the public app
         run: |
           mkdir -p _site
-          cp index.html sw.js manifest.webmanifest .nojekyll compact_reference.json ladder_spec.json checklist-icon.svg checklist-icon-32.png checklist-icon-192.png checklist-icon-512.png apple-touch-icon.png _site/
+          cp index.html sw.js manifest.webmanifest .nojekyll compact_reference.json ladder_spec.json machine_rollout_reference.json checklist-icon.svg checklist-icon-32.png checklist-icon-192.png checklist-icon-512.png apple-touch-icon.png _site/
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
@@ -89,18 +101,18 @@ jobs:
       - name: Publish the checklist
         id: deployment
         uses: actions/deploy-pages@v4
-      - name: Verify published automatic restart guide
+      - name: Verify published machine checklists
         run: |
           python3 - <<'PY'
           from pathlib import Path
           from urllib.request import Request,urlopen
           import hashlib,json,os,time
           base='https://andsuch-mods.github.io/General-AI-Test-Space-7/'
-          for name in ['index.html','sw.js','manifest.webmanifest','compact_reference.json','ladder_spec.json']:
+          for name in ['index.html','sw.js','manifest.webmanifest','compact_reference.json','ladder_spec.json','machine_rollout_reference.json']:
               expected=Path(name).read_bytes()
               for attempt in range(12):
                   try:
-                      request=Request(base+name+'?verify='+os.environ['GITHUB_SHA'],headers={'User-Agent':'CSI-restart-guide-verification'})
+                      request=Request(base+name+'?verify='+os.environ['GITHUB_SHA'],headers={'User-Agent':'CSI-machine-checklist-verification'})
                       with urlopen(request,timeout=20) as response:
                           actual=response.read()
                           assert response.status==200
@@ -111,12 +123,13 @@ jobs:
                       if attempt==11:raise
                       print('Retry:',name,exc)
                       time.sleep(10)
-          browser=json.loads(Path('tests/compact_browser_results.json').read_text())
+          browser=json.loads(Path('tests/rollout_results.json').read_text())
           model=json.loads(Path('tests/restart_results.json').read_text())
           assert browser['live_browser'] is True
           with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as summary:
               summary.write('Published and verified: '+base+'\n\n')
-              summary.write('No CSI_Setup or setup enable write. Retain the 12 report fields and four period keys; all other Static state is non-retentive. First cyclic call clears only live timing and resynchronizes. Day/night names and all 48-byte offsets are unchanged.\n\n')
-              summary.write(str(model['base_compact_checks'])+' existing model checks, '+str(model['passed'])+' restart checks and '+str(browser['passed'])+' live browser checks passed. Tests simulate the configured retention; no TIA compilation or CPU power-loss test was performed.\n\n')
-              summary.write('Dark mode, user notes, retired setup notes, Completed/restore and offline use are preserved. No additional test artifacts retained; Pages artifact retained for one day.\n')
+              summary.write('MM6 uses CSI_Report_MM6, CSI_Reporting_MM6 and CSI_Reporting_MM6_DB. Its first four tasks and all 66 networks change block names only; 12 report fields and offsets are unchanged.\n\n')
+              summary.write('MM4 and MM5 have independent observation, compatibility, copy, rename, instance, retention, download-review and acceptance checklists, plus independent Kepware DB maps. A WinLC target requires an already reviewed target-compatible donor or a separate legacy adaptation; this workflow does not supply a complete legacy rung conversion.\n\n')
+              summary.write(str(model['base_compact_checks'])+' base model checks, '+str(model['passed'])+' restart checks and '+str(browser['passed'])+' machine-guide structure/browser checks passed. No Siemens compilation, PLC execution or live machine verification was performed.\n\n')
+              summary.write('User notes, MM6 completed work, dark mode, scrolling and offline use preserved. No extra screenshot/test artifacts retained; required Pages artifact has one-day retention. No billing or PLC settings changed.\n')
           PY
