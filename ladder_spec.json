@@ -1,0 +1,4712 @@
+{
+  "CSI_Increment": {
+    "kind": "FC",
+    "rows": [
+      {
+        "section": "InOut",
+        "name": "Value",
+        "type": "DInt",
+        "initial": null,
+        "comment": "Count to increase once per enabled call."
+      }
+    ],
+    "networks": [
+      {
+        "number": 1,
+        "title": "Flag an attempted count beyond the DINT limit",
+        "phase": "",
+        "gate": [
+          "cmp",
+          "#Value",
+          ">=",
+          2147483647
+        ],
+        "actions": [
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".CounterSaturated",
+            "inputs": {
+              "IN": 1
+            }
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 2,
+        "title": "Add one without overflowing",
+        "phase": "",
+        "gate": [
+          "cmp",
+          "#Value",
+          "<",
+          2147483647
+        ],
+        "actions": [
+          {
+            "op": "ADD",
+            "out": "#Value",
+            "inputs": {
+              "IN1": "#Value",
+              "IN2": 1
+            },
+            "type": "DInt"
+          }
+        ],
+        "note": ""
+      }
+    ]
+  },
+  "CSI_AddElapsed": {
+    "kind": "FC",
+    "rows": [
+      {
+        "section": "Input",
+        "name": "DeltaMs",
+        "type": "DInt",
+        "initial": null,
+        "comment": "This scan\u2019s accepted elapsed milliseconds."
+      },
+      {
+        "section": "InOut",
+        "name": "Seconds",
+        "type": "DInt",
+        "initial": null,
+        "comment": "The caller keeps these values between scans."
+      },
+      {
+        "section": "InOut",
+        "name": "Millis",
+        "type": "DInt",
+        "initial": null,
+        "comment": "The caller keeps these values between scans."
+      },
+      {
+        "section": "Temp",
+        "name": "SumMs",
+        "type": "DInt",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "Carry",
+        "type": "DInt",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "Room",
+        "type": "DInt",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "CanAdd",
+        "type": "Bool",
+        "initial": null,
+        "comment": ""
+      }
+    ],
+    "networks": [
+      {
+        "number": 1,
+        "title": "Combine the millisecond remainder",
+        "phase": "",
+        "gate": true,
+        "actions": [
+          {
+            "op": "ADD",
+            "out": "#SumMs",
+            "inputs": {
+              "IN1": "#Millis",
+              "IN2": "#DeltaMs"
+            },
+            "type": "DInt"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 2,
+        "title": "Find whole seconds to carry",
+        "phase": "",
+        "gate": true,
+        "actions": [
+          {
+            "op": "DIV",
+            "out": "#Carry",
+            "inputs": {
+              "IN1": "#SumMs",
+              "IN2": 1000
+            },
+            "type": "DInt"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 3,
+        "title": "Check room in the seconds counter",
+        "phase": "",
+        "gate": true,
+        "actions": [
+          {
+            "op": "SUB",
+            "out": "#Room",
+            "inputs": {
+              "IN1": 2147483647,
+              "IN2": "#Carry"
+            },
+            "type": "DInt"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 4,
+        "title": "Remember whether this addition fits",
+        "phase": "",
+        "gate": [
+          "cmp",
+          "#Seconds",
+          "<=",
+          "#Room"
+        ],
+        "actions": [
+          {
+            "op": "COIL",
+            "out": "#CanAdd"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 5,
+        "title": "Accumulate whole seconds",
+        "phase": "",
+        "gate": "#CanAdd",
+        "actions": [
+          {
+            "op": "ADD",
+            "out": "#Seconds",
+            "inputs": {
+              "IN1": "#Seconds",
+              "IN2": "#Carry"
+            },
+            "type": "DInt"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 6,
+        "title": "Keep the remaining milliseconds",
+        "phase": "",
+        "gate": "#CanAdd",
+        "actions": [
+          {
+            "op": "MOD",
+            "out": "#Millis",
+            "inputs": {
+              "IN1": "#SumMs",
+              "IN2": 1000
+            },
+            "type": "DInt"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 7,
+        "title": "Saturate instead of wrapping",
+        "phase": "",
+        "gate": [
+          "not",
+          "#CanAdd"
+        ],
+        "actions": [
+          {
+            "op": "MOVE",
+            "out": "#Seconds",
+            "inputs": {
+              "IN": 2147483647
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "#Millis",
+            "inputs": {
+              "IN": 999
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".TimingFault",
+            "inputs": {
+              "IN": 1
+            }
+          }
+        ],
+        "note": ""
+      }
+    ]
+  },
+  "CSI_PeriodCounter": {
+    "kind": "FB",
+    "rows": [
+      {
+        "section": "Input",
+        "name": "ClockOK",
+        "type": "Bool",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Input",
+        "name": "WindowActive",
+        "type": "Bool",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Input",
+        "name": "EndReached",
+        "type": "Bool",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Input",
+        "name": "BoundaryObserved",
+        "type": "Bool",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Input",
+        "name": "QualityGood",
+        "type": "Bool",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Input",
+        "name": "Continuous",
+        "type": "Bool",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Input",
+        "name": "Restart",
+        "type": "Bool",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Input",
+        "name": "CountPulse",
+        "type": "Bool",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Input",
+        "name": "Key",
+        "type": "DInt",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Input",
+        "name": "Label",
+        "type": "DInt",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Output",
+        "name": "CurrentCount",
+        "type": "DInt",
+        "initial": 0,
+        "comment": ""
+      },
+      {
+        "section": "Output",
+        "name": "PreviousCount",
+        "type": "DInt",
+        "initial": 0,
+        "comment": ""
+      },
+      {
+        "section": "Output",
+        "name": "CurrentLabel",
+        "type": "DInt",
+        "initial": 0,
+        "comment": ""
+      },
+      {
+        "section": "Output",
+        "name": "PreviousLabel",
+        "type": "DInt",
+        "initial": 0,
+        "comment": ""
+      },
+      {
+        "section": "Output",
+        "name": "CurrentKey",
+        "type": "DInt",
+        "initial": -1,
+        "comment": ""
+      },
+      {
+        "section": "Output",
+        "name": "PreviousKey",
+        "type": "DInt",
+        "initial": -1,
+        "comment": ""
+      },
+      {
+        "section": "Output",
+        "name": "CurrentPartial",
+        "type": "DInt",
+        "initial": 1,
+        "comment": ""
+      },
+      {
+        "section": "Output",
+        "name": "PreviousPartial",
+        "type": "DInt",
+        "initial": 1,
+        "comment": ""
+      },
+      {
+        "section": "Static",
+        "name": "Closed",
+        "type": "Bool",
+        "initial": false,
+        "comment": ""
+      },
+      {
+        "section": "Static",
+        "name": "LastQuality",
+        "type": "Bool",
+        "initial": false,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "NewPeriod",
+        "type": "Bool",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "CloseOld",
+        "type": "Bool",
+        "initial": null,
+        "comment": ""
+      }
+    ],
+    "networks": [
+      {
+        "number": 1,
+        "title": "Recognize a later scheduled period",
+        "phase": "",
+        "gate": [
+          "and",
+          "#ClockOK",
+          "#WindowActive",
+          [
+            "cmp",
+            "#Key",
+            ">",
+            "#CurrentKey"
+          ]
+        ],
+        "actions": [
+          {
+            "op": "COIL",
+            "out": "#NewPeriod"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 2,
+        "title": "Mark an interrupted current period partial",
+        "phase": "",
+        "gate": [
+          "and",
+          [
+            "cmp",
+            "#CurrentKey",
+            ">=",
+            0
+          ],
+          [
+            "not",
+            "#Closed"
+          ],
+          [
+            "or",
+            "#Restart",
+            [
+              "not",
+              "#ClockOK"
+            ],
+            [
+              "not",
+              "#Continuous"
+            ],
+            [
+              "not",
+              "#QualityGood"
+            ]
+          ]
+        ],
+        "actions": [
+          {
+            "op": "MOVE",
+            "out": "#CurrentPartial",
+            "inputs": {
+              "IN": 1
+            }
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 3,
+        "title": "Decide once whether the old period must close",
+        "phase": "",
+        "gate": [
+          "and",
+          "#ClockOK",
+          [
+            "cmp",
+            "#CurrentKey",
+            ">=",
+            0
+          ],
+          [
+            "not",
+            "#Closed"
+          ],
+          [
+            "or",
+            "#EndReached",
+            "#NewPeriod"
+          ]
+        ],
+        "actions": [
+          {
+            "op": "COIL",
+            "out": "#CloseOld"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 4,
+        "title": "Hold the closed period\u2019s result",
+        "phase": "",
+        "gate": "#CloseOld",
+        "actions": [
+          {
+            "op": "MOVE",
+            "out": "#PreviousCount",
+            "inputs": {
+              "IN": "#CurrentCount"
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "#PreviousKey",
+            "inputs": {
+              "IN": "#CurrentKey"
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "#PreviousLabel",
+            "inputs": {
+              "IN": "#CurrentLabel"
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "#PreviousPartial",
+            "inputs": {
+              "IN": "#CurrentPartial"
+            }
+          },
+          {
+            "op": "SET",
+            "out": "#Closed"
+          }
+        ],
+        "note": "Parallel output branches after the same CloseOld contact. Do not clear CurrentCount here."
+      },
+      {
+        "number": 5,
+        "title": "Begin this period only when its window opens",
+        "phase": "",
+        "gate": "#NewPeriod",
+        "actions": [
+          {
+            "op": "MOVE",
+            "out": "#CurrentCount",
+            "inputs": {
+              "IN": 0
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "#CurrentKey",
+            "inputs": {
+              "IN": "#Key"
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "#CurrentLabel",
+            "inputs": {
+              "IN": "#Label"
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "#CurrentPartial",
+            "inputs": {
+              "IN": 1
+            }
+          },
+          {
+            "op": "RESET",
+            "out": "#Closed"
+          }
+        ],
+        "note": "A closed shift can sit all weekend without entering this network."
+      },
+      {
+        "number": 6,
+        "title": "Mark a continuously observed beginning complete",
+        "phase": "",
+        "gate": [
+          "and",
+          "#NewPeriod",
+          "#BoundaryObserved",
+          "#Continuous",
+          "#QualityGood",
+          "#LastQuality",
+          [
+            "not",
+            "#Restart"
+          ]
+        ],
+        "actions": [
+          {
+            "op": "MOVE",
+            "out": "#CurrentPartial",
+            "inputs": {
+              "IN": 0
+            }
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 7,
+        "title": "Count one finished cycle in the new period",
+        "phase": "",
+        "gate": [
+          "and",
+          "#ClockOK",
+          "#WindowActive",
+          "#CountPulse",
+          [
+            "not",
+            "#Closed"
+          ],
+          [
+            "cmp",
+            "#Key",
+            "==",
+            "#CurrentKey"
+          ]
+        ],
+        "actions": [
+          {
+            "op": "CALL",
+            "block": "CSI_Increment",
+            "instance": null,
+            "inputs": {
+              "Value": "#CurrentCount"
+            }
+          }
+        ],
+        "note": "This comes AFTER period closing/reset. The completion belongs to its finishing period."
+      },
+      {
+        "number": 8,
+        "title": "Remember quality for the next scan",
+        "phase": "",
+        "gate": [
+          "and",
+          "#ClockOK",
+          "#QualityGood"
+        ],
+        "actions": [
+          {
+            "op": "COIL",
+            "out": "#LastQuality"
+          }
+        ],
+        "note": ""
+      }
+    ]
+  },
+  "CSI_Reporting": {
+    "kind": "FB",
+    "rows": [
+      {
+        "section": "Input",
+        "name": "CloseCommand",
+        "type": "Bool",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Input",
+        "name": "RobotPermit",
+        "type": "Bool",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Input",
+        "name": "ProductionEligible",
+        "type": "Bool",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Input",
+        "name": "RobotDataValid",
+        "type": "Bool",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Input",
+        "name": "AbortCycle",
+        "type": "Bool",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Static",
+        "name": "Initialized",
+        "type": "Bool",
+        "initial": false,
+        "comment": ""
+      },
+      {
+        "section": "Static",
+        "name": "HaveClock",
+        "type": "Bool",
+        "initial": false,
+        "comment": ""
+      },
+      {
+        "section": "Static",
+        "name": "PrevClose",
+        "type": "Bool",
+        "initial": false,
+        "comment": ""
+      },
+      {
+        "section": "Static",
+        "name": "PrevPermit",
+        "type": "Bool",
+        "initial": false,
+        "comment": ""
+      },
+      {
+        "section": "Static",
+        "name": "LowSeen",
+        "type": "Bool",
+        "initial": false,
+        "comment": ""
+      },
+      {
+        "section": "Static",
+        "name": "State",
+        "type": "DInt",
+        "initial": 0,
+        "comment": ""
+      },
+      {
+        "section": "Static",
+        "name": "PrevTick",
+        "type": "DInt",
+        "initial": 0,
+        "comment": ""
+      },
+      {
+        "section": "Static",
+        "name": "LastUtcMinute",
+        "type": "DInt",
+        "initial": 0,
+        "comment": ""
+      },
+      {
+        "section": "Static",
+        "name": "LastUtcSecond",
+        "type": "DInt",
+        "initial": 0,
+        "comment": ""
+      },
+      {
+        "section": "Static",
+        "name": "CycleSec",
+        "type": "DInt",
+        "initial": 0,
+        "comment": ""
+      },
+      {
+        "section": "Static",
+        "name": "CycleMs",
+        "type": "DInt",
+        "initial": 0,
+        "comment": ""
+      },
+      {
+        "section": "Static",
+        "name": "GapSec",
+        "type": "DInt",
+        "initial": 0,
+        "comment": ""
+      },
+      {
+        "section": "Static",
+        "name": "GapMs",
+        "type": "DInt",
+        "initial": 0,
+        "comment": ""
+      },
+      {
+        "section": "Static",
+        "name": "HourCounter",
+        "type": "CSI_PeriodCounter",
+        "initial": null,
+        "comment": "Multi-instance of the LAD FB created earlier; do not re-enter its nested fields."
+      },
+      {
+        "section": "Static",
+        "name": "DayCounter",
+        "type": "CSI_PeriodCounter",
+        "initial": null,
+        "comment": "Multi-instance of the LAD FB created earlier; do not re-enter its nested fields."
+      },
+      {
+        "section": "Static",
+        "name": "Shift1Counter",
+        "type": "CSI_PeriodCounter",
+        "initial": null,
+        "comment": "Multi-instance of the LAD FB created earlier; do not re-enter its nested fields."
+      },
+      {
+        "section": "Static",
+        "name": "Shift2Counter",
+        "type": "CSI_PeriodCounter",
+        "initial": null,
+        "comment": "Multi-instance of the LAD FB created earlier; do not re-enter its nested fields."
+      },
+      {
+        "section": "Temp",
+        "name": "LocalStamp",
+        "type": "DTL",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "UtcStamp",
+        "type": "DTL",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "LocalDate",
+        "type": "DATE",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "UtcDate",
+        "type": "DATE",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "TickTime",
+        "type": "TIME",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "LocalStatus",
+        "type": "Int",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "UtcStatus",
+        "type": "Int",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "Day",
+        "type": "DInt",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "UtcDay",
+        "type": "DInt",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "Year",
+        "type": "DInt",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "Month",
+        "type": "DInt",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "DayOfMonth",
+        "type": "DInt",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "Weekday",
+        "type": "DInt",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "Hour",
+        "type": "DInt",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "Minute",
+        "type": "DInt",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "Second",
+        "type": "DInt",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "UtcHour",
+        "type": "DInt",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "UtcMinute",
+        "type": "DInt",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "UtcSecond",
+        "type": "DInt",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "MinuteOfDay",
+        "type": "DInt",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "UtcMinuteKey",
+        "type": "DInt",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "HourKey",
+        "type": "DInt",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "ShiftDay",
+        "type": "DInt",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "DateLabel",
+        "type": "DInt",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "TimeLabel",
+        "type": "DInt",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "HourLabel",
+        "type": "DInt",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "Delta",
+        "type": "DInt",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "TickNow",
+        "type": "DInt",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "OldState",
+        "type": "DInt",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "ClockStep",
+        "type": "DInt",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "Shift1EndDay",
+        "type": "DInt",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "Shift2EndDay",
+        "type": "DInt",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "LocalDateOK",
+        "type": "Bool",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "UtcDateOK",
+        "type": "Bool",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "LocalDayOK",
+        "type": "Bool",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "UtcDayOK",
+        "type": "Bool",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "RawClock",
+        "type": "Bool",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "Backward",
+        "type": "Bool",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "ClockJump",
+        "type": "Bool",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "ClockOK",
+        "type": "Bool",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "Continuous",
+        "type": "Bool",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "Fresh",
+        "type": "Bool",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "TickOK",
+        "type": "Bool",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "S1Days",
+        "type": "Bool",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "S2EveningDays",
+        "type": "Bool",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "S2MorningDays",
+        "type": "Bool",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "Shift1",
+        "type": "Bool",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "Shift2",
+        "type": "Bool",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "Scheduled",
+        "type": "Bool",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "ConfigOK",
+        "type": "Bool",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "Enabled",
+        "type": "Bool",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "BaseGood",
+        "type": "Bool",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "AllowRun",
+        "type": "Bool",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "CloseRise",
+        "type": "Bool",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "PermitRise",
+        "type": "Bool",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "Drop",
+        "type": "Bool",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "SkippedActive",
+        "type": "Bool",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "SyncPulse",
+        "type": "Bool",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "Complete",
+        "type": "Bool",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "StartPulse",
+        "type": "Bool",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "Ambiguous",
+        "type": "Bool",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "ResyncGap",
+        "type": "Bool",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "QualityGood",
+        "type": "Bool",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "EndHour",
+        "type": "Bool",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "EndDay",
+        "type": "Bool",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "EndShift1",
+        "type": "Bool",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "EndShift2",
+        "type": "Bool",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "BoundaryHour",
+        "type": "Bool",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "BoundaryDay",
+        "type": "Bool",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "BoundaryShift1",
+        "type": "Bool",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "BoundaryShift2",
+        "type": "Bool",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "CycleWhole",
+        "type": "Real",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "CycleFrac",
+        "type": "Real",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "CycleValue",
+        "type": "Real",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "GapWhole",
+        "type": "Real",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "GapFrac",
+        "type": "Real",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "GapValue",
+        "type": "Real",
+        "initial": null,
+        "comment": ""
+      },
+      {
+        "section": "Temp",
+        "name": "LastUtcMinutePlusOne",
+        "type": "DInt",
+        "initial": null,
+        "comment": ""
+      }
+    ],
+    "networks": [
+      {
+        "number": 1,
+        "title": "Identify this LAD reporting revision",
+        "phase": "Read the clock and elapsed scan time",
+        "gate": true,
+        "actions": [
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".SchemaVersion",
+            "inputs": {
+              "IN": 3
+            }
+          }
+        ],
+        "note": "Same 60-field byte layout; revision 3 identifies the weekday-only LAD behavior."
+      },
+      {
+        "number": 2,
+        "title": "Wrap the heartbeat before incrementing",
+        "phase": "Read the clock and elapsed scan time",
+        "gate": [
+          "cmp",
+          "\"CSI_Report\".Heartbeat",
+          ">=",
+          2147483647
+        ],
+        "actions": [
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".Heartbeat",
+            "inputs": {
+              "IN": 0
+            }
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 3,
+        "title": "Advance the heartbeat",
+        "phase": "Read the clock and elapsed scan time",
+        "gate": true,
+        "actions": [
+          {
+            "op": "ADD",
+            "out": "\"CSI_Report\".Heartbeat",
+            "inputs": {
+              "IN1": "\"CSI_Report\".Heartbeat",
+              "IN2": 1
+            },
+            "type": "DInt"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 4,
+        "title": "Read plant-local time",
+        "phase": "Read the clock and elapsed scan time",
+        "gate": true,
+        "actions": [
+          {
+            "op": "RD_LOC_T",
+            "out": "#LocalStamp",
+            "ret": "#LocalStatus"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 5,
+        "title": "Read UTC for a unique clock-hour key",
+        "phase": "Read the clock and elapsed scan time",
+        "gate": true,
+        "actions": [
+          {
+            "op": "RD_SYS_T",
+            "out": "#UtcStamp",
+            "ret": "#UtcStatus"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 6,
+        "title": "Read elapsed RUN milliseconds",
+        "phase": "Read the clock and elapsed scan time",
+        "gate": true,
+        "actions": [
+          {
+            "op": "TIME_TCK",
+            "out": "#TickTime",
+            "ret": null
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 7,
+        "title": "Convert elapsed TIME to integer milliseconds",
+        "phase": "Read the clock and elapsed scan time",
+        "gate": true,
+        "actions": [
+          {
+            "op": "T_CONV",
+            "out": "#TickNow",
+            "inputs": {
+              "IN": "#TickTime"
+            },
+            "type": "TIME \u2192 DInt",
+            "eno": null
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 8,
+        "title": "Extract the local date",
+        "phase": "Read the clock and elapsed scan time",
+        "gate": true,
+        "actions": [
+          {
+            "op": "T_CONV",
+            "out": "#LocalDate",
+            "inputs": {
+              "IN": "#LocalStamp"
+            },
+            "type": "DTL \u2192 DATE",
+            "eno": "#LocalDateOK"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 9,
+        "title": "Extract the UTC date",
+        "phase": "Read the clock and elapsed scan time",
+        "gate": true,
+        "actions": [
+          {
+            "op": "T_CONV",
+            "out": "#UtcDate",
+            "inputs": {
+              "IN": "#UtcStamp"
+            },
+            "type": "DTL \u2192 DATE",
+            "eno": "#UtcDateOK"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 10,
+        "title": "Convert local date to days since 1990",
+        "phase": "Read the clock and elapsed scan time",
+        "gate": "#LocalDateOK",
+        "actions": [
+          {
+            "op": "T_CONV",
+            "out": "#Day",
+            "inputs": {
+              "IN": "#LocalDate"
+            },
+            "type": "DATE \u2192 DInt",
+            "eno": "#LocalDayOK"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 11,
+        "title": "Convert UTC date to days since 1990",
+        "phase": "Read the clock and elapsed scan time",
+        "gate": "#UtcDateOK",
+        "actions": [
+          {
+            "op": "T_CONV",
+            "out": "#UtcDay",
+            "inputs": {
+              "IN": "#UtcDate"
+            },
+            "type": "DATE \u2192 DInt",
+            "eno": "#UtcDayOK"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 12,
+        "title": "Convert Year to DINT",
+        "phase": "Read the clock and elapsed scan time",
+        "gate": true,
+        "actions": [
+          {
+            "op": "CONVERT",
+            "out": "#Year",
+            "inputs": {
+              "IN": "#LocalStamp.YEAR"
+            },
+            "type": "UInt \u2192 DInt",
+            "eno": null
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 13,
+        "title": "Convert Month to DINT",
+        "phase": "Read the clock and elapsed scan time",
+        "gate": true,
+        "actions": [
+          {
+            "op": "CONVERT",
+            "out": "#Month",
+            "inputs": {
+              "IN": "#LocalStamp.MONTH"
+            },
+            "type": "USInt \u2192 DInt",
+            "eno": null
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 14,
+        "title": "Convert DayOfMonth to DINT",
+        "phase": "Read the clock and elapsed scan time",
+        "gate": true,
+        "actions": [
+          {
+            "op": "CONVERT",
+            "out": "#DayOfMonth",
+            "inputs": {
+              "IN": "#LocalStamp.DAY"
+            },
+            "type": "USInt \u2192 DInt",
+            "eno": null
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 15,
+        "title": "Convert Weekday to DINT",
+        "phase": "Read the clock and elapsed scan time",
+        "gate": true,
+        "actions": [
+          {
+            "op": "CONVERT",
+            "out": "#Weekday",
+            "inputs": {
+              "IN": "#LocalStamp.WEEKDAY"
+            },
+            "type": "USInt \u2192 DInt",
+            "eno": null
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 16,
+        "title": "Convert Hour to DINT",
+        "phase": "Read the clock and elapsed scan time",
+        "gate": true,
+        "actions": [
+          {
+            "op": "CONVERT",
+            "out": "#Hour",
+            "inputs": {
+              "IN": "#LocalStamp.HOUR"
+            },
+            "type": "USInt \u2192 DInt",
+            "eno": null
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 17,
+        "title": "Convert Minute to DINT",
+        "phase": "Read the clock and elapsed scan time",
+        "gate": true,
+        "actions": [
+          {
+            "op": "CONVERT",
+            "out": "#Minute",
+            "inputs": {
+              "IN": "#LocalStamp.MINUTE"
+            },
+            "type": "USInt \u2192 DInt",
+            "eno": null
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 18,
+        "title": "Convert Second to DINT",
+        "phase": "Read the clock and elapsed scan time",
+        "gate": true,
+        "actions": [
+          {
+            "op": "CONVERT",
+            "out": "#Second",
+            "inputs": {
+              "IN": "#LocalStamp.SECOND"
+            },
+            "type": "USInt \u2192 DInt",
+            "eno": null
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 19,
+        "title": "Convert UtcHour to DINT",
+        "phase": "Read the clock and elapsed scan time",
+        "gate": true,
+        "actions": [
+          {
+            "op": "CONVERT",
+            "out": "#UtcHour",
+            "inputs": {
+              "IN": "#UtcStamp.HOUR"
+            },
+            "type": "USInt \u2192 DInt",
+            "eno": null
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 20,
+        "title": "Convert UtcMinute to DINT",
+        "phase": "Read the clock and elapsed scan time",
+        "gate": true,
+        "actions": [
+          {
+            "op": "CONVERT",
+            "out": "#UtcMinute",
+            "inputs": {
+              "IN": "#UtcStamp.MINUTE"
+            },
+            "type": "USInt \u2192 DInt",
+            "eno": null
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 21,
+        "title": "Convert UtcSecond to DINT",
+        "phase": "Read the clock and elapsed scan time",
+        "gate": true,
+        "actions": [
+          {
+            "op": "CONVERT",
+            "out": "#UtcSecond",
+            "inputs": {
+              "IN": "#UtcStamp.SECOND"
+            },
+            "type": "USInt \u2192 DInt",
+            "eno": null
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 22,
+        "title": "Calculate the local minute of day",
+        "phase": "Read the clock and elapsed scan time",
+        "gate": true,
+        "actions": [
+          {
+            "op": "CALCULATE",
+            "out": "#MinuteOfDay",
+            "inputs": {
+              "IN1": "#Hour",
+              "IN2": "#Minute"
+            },
+            "type": "DInt",
+            "formula": "IN1 * 60 + IN2"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 23,
+        "title": "Build UTC minute identity",
+        "phase": "Read the clock and elapsed scan time",
+        "gate": true,
+        "actions": [
+          {
+            "op": "CALCULATE",
+            "out": "#UtcMinuteKey",
+            "inputs": {
+              "IN1": "#UtcDay",
+              "IN2": "#UtcHour",
+              "IN3": "#UtcMinute"
+            },
+            "type": "DInt",
+            "formula": "IN1 * 1440 + IN2 * 60 + IN3"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 24,
+        "title": "Build UTC hour identity",
+        "phase": "Read the clock and elapsed scan time",
+        "gate": true,
+        "actions": [
+          {
+            "op": "CALCULATE",
+            "out": "#HourKey",
+            "inputs": {
+              "IN1": "#UtcDay",
+              "IN2": "#UtcHour"
+            },
+            "type": "DInt",
+            "formula": "IN1 * 24 + IN2"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 25,
+        "title": "Build a readable local date",
+        "phase": "Read the clock and elapsed scan time",
+        "gate": [
+          "and",
+          [
+            "cmp",
+            "#Year",
+            ">=",
+            1990
+          ],
+          [
+            "cmp",
+            "#Year",
+            "<=",
+            2089
+          ]
+        ],
+        "actions": [
+          {
+            "op": "CALCULATE",
+            "out": "#DateLabel",
+            "inputs": {
+              "IN1": "#Year",
+              "IN2": "#Month",
+              "IN3": "#DayOfMonth"
+            },
+            "type": "DInt",
+            "formula": "IN1 * 10000 + IN2 * 100 + IN3"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 26,
+        "title": "Build a readable local time",
+        "phase": "Read the clock and elapsed scan time",
+        "gate": true,
+        "actions": [
+          {
+            "op": "CALCULATE",
+            "out": "#TimeLabel",
+            "inputs": {
+              "IN1": "#Hour",
+              "IN2": "#Minute",
+              "IN3": "#Second"
+            },
+            "type": "DInt",
+            "formula": "IN1 * 10000 + IN2 * 100 + IN3"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 27,
+        "title": "Build the displayed local-hour label",
+        "phase": "Read the clock and elapsed scan time",
+        "gate": [
+          "and",
+          [
+            "cmp",
+            "#Year",
+            ">=",
+            1990
+          ],
+          [
+            "cmp",
+            "#Year",
+            "<=",
+            2089
+          ]
+        ],
+        "actions": [
+          {
+            "op": "CALCULATE",
+            "out": "#HourLabel",
+            "inputs": {
+              "IN1": "#DateLabel",
+              "IN2": "#Hour"
+            },
+            "type": "DInt",
+            "formula": "IN1 * 100 + IN2"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 28,
+        "title": "Check that the two calendar reads are usable",
+        "phase": "Read the clock and elapsed scan time",
+        "gate": [
+          "and",
+          [
+            "or",
+            [
+              "cmp",
+              "#LocalStatus",
+              "==",
+              0
+            ],
+            [
+              "cmp",
+              "#LocalStatus",
+              "==",
+              1
+            ]
+          ],
+          [
+            "cmp",
+            "#UtcStatus",
+            "==",
+            0
+          ],
+          "#LocalDayOK",
+          "#UtcDayOK",
+          [
+            "cmp",
+            "#Year",
+            ">=",
+            1990
+          ],
+          [
+            "cmp",
+            "#Year",
+            "<=",
+            2089
+          ],
+          [
+            "cmp",
+            "#Minute",
+            "==",
+            "#UtcMinute"
+          ]
+        ],
+        "actions": [
+          {
+            "op": "COIL",
+            "out": "#RawClock"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 29,
+        "title": "Recognize first execution or PLC restart",
+        "phase": "Read the clock and elapsed scan time",
+        "gate": [
+          "or",
+          [
+            "not",
+            "#Initialized"
+          ],
+          "\"CSI_Setup\".StartupPending"
+        ],
+        "actions": [
+          {
+            "op": "COIL",
+            "out": "#Fresh"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 30,
+        "title": "Default elapsed scan time to zero",
+        "phase": "Read the clock and elapsed scan time",
+        "gate": true,
+        "actions": [
+          {
+            "op": "MOVE",
+            "out": "#Delta",
+            "inputs": {
+              "IN": 0
+            }
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 31,
+        "title": "Normal tick difference",
+        "phase": "Read the clock and elapsed scan time",
+        "gate": [
+          "and",
+          [
+            "not",
+            "#Fresh"
+          ],
+          [
+            "cmp",
+            "#TickNow",
+            ">=",
+            "#PrevTick"
+          ]
+        ],
+        "actions": [
+          {
+            "op": "SUB",
+            "out": "#Delta",
+            "inputs": {
+              "IN1": "#TickNow",
+              "IN2": "#PrevTick"
+            },
+            "type": "DInt"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 32,
+        "title": "Tick difference across its normal wrap",
+        "phase": "Read the clock and elapsed scan time",
+        "gate": [
+          "and",
+          [
+            "not",
+            "#Fresh"
+          ],
+          [
+            "cmp",
+            "#TickNow",
+            "<",
+            "#PrevTick"
+          ]
+        ],
+        "actions": [
+          {
+            "op": "CALCULATE",
+            "out": "#Delta",
+            "inputs": {
+              "IN1": "#PrevTick",
+              "IN2": "#TickNow"
+            },
+            "type": "DInt",
+            "formula": "2147483647 - IN1 + IN2 + 1"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 33,
+        "title": "Accept a plausible scan delta",
+        "phase": "Read the clock and elapsed scan time",
+        "gate": [
+          "and",
+          [
+            "not",
+            "#Fresh"
+          ],
+          [
+            "cmp",
+            "#TickNow",
+            ">=",
+            0
+          ],
+          [
+            "cmp",
+            "#Delta",
+            ">=",
+            0
+          ],
+          [
+            "cmp",
+            "#Delta",
+            "<=",
+            10000
+          ]
+        ],
+        "actions": [
+          {
+            "op": "COIL",
+            "out": "#TickOK"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 34,
+        "title": "Flag an elapsed-clock discontinuity",
+        "phase": "Read the clock and elapsed scan time",
+        "gate": [
+          "and",
+          [
+            "not",
+            "#Fresh"
+          ],
+          [
+            "not",
+            "#TickOK"
+          ]
+        ],
+        "actions": [
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".TimingFault",
+            "inputs": {
+              "IN": 1
+            }
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 35,
+        "title": "Detect a backward UTC correction",
+        "phase": "Read the clock and elapsed scan time",
+        "gate": [
+          "and",
+          "#RawClock",
+          "#HaveClock",
+          [
+            "or",
+            [
+              "cmp",
+              "#UtcMinuteKey",
+              "<",
+              "#LastUtcMinute"
+            ],
+            [
+              "and",
+              [
+                "cmp",
+                "#UtcMinuteKey",
+                "==",
+                "#LastUtcMinute"
+              ],
+              [
+                "cmp",
+                "#UtcSecond",
+                "<",
+                "#LastUtcSecond"
+              ]
+            ]
+          ]
+        ],
+        "actions": [
+          {
+            "op": "COIL",
+            "out": "#Backward"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 36,
+        "title": "Default calendar separation to unknown",
+        "phase": "Read the clock and elapsed scan time",
+        "gate": true,
+        "actions": [
+          {
+            "op": "MOVE",
+            "out": "#ClockStep",
+            "inputs": {
+              "IN": 999
+            }
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 37,
+        "title": "Prepare the UTC minute comparison limit",
+        "phase": "Read the clock and elapsed scan time",
+        "gate": true,
+        "actions": [
+          {
+            "op": "ADD",
+            "out": "#LastUtcMinutePlusOne",
+            "inputs": {
+              "IN1": "#LastUtcMinute",
+              "IN2": 1
+            },
+            "type": "DInt"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 38,
+        "title": "Calculate a short calendar separation",
+        "phase": "Read the clock and elapsed scan time",
+        "gate": [
+          "and",
+          "#RawClock",
+          "#HaveClock",
+          [
+            "cmp",
+            "#UtcMinuteKey",
+            ">=",
+            "#LastUtcMinute"
+          ],
+          [
+            "cmp",
+            "#UtcMinuteKey",
+            "<=",
+            "#LastUtcMinutePlusOne"
+          ]
+        ],
+        "actions": [
+          {
+            "op": "CALCULATE",
+            "out": "#ClockStep",
+            "inputs": {
+              "IN1": "#UtcMinuteKey",
+              "IN2": "#LastUtcMinute",
+              "IN3": "#UtcSecond",
+              "IN4": "#LastUtcSecond"
+            },
+            "type": "DInt",
+            "formula": "(IN1 - IN2) * 60 + IN3 - IN4"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 39,
+        "title": "Mark a forward calendar gap",
+        "phase": "Read the clock and elapsed scan time",
+        "gate": [
+          "and",
+          "#RawClock",
+          "#HaveClock",
+          [
+            "not",
+            "#Backward"
+          ],
+          [
+            "cmp",
+            "#ClockStep",
+            ">",
+            2
+          ],
+          [
+            "not",
+            "#Fresh"
+          ]
+        ],
+        "actions": [
+          {
+            "op": "COIL",
+            "out": "#ClockJump"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 40,
+        "title": "Allow calendar assignment without reversing a stored period",
+        "phase": "Read the clock and elapsed scan time",
+        "gate": [
+          "and",
+          "#RawClock",
+          [
+            "not",
+            "#Backward"
+          ],
+          [
+            "cmp",
+            "#HourKey",
+            ">=",
+            "#HourCounter.CurrentKey"
+          ],
+          [
+            "cmp",
+            "#Day",
+            ">=",
+            "#DayCounter.CurrentKey"
+          ]
+        ],
+        "actions": [
+          {
+            "op": "COIL",
+            "out": "#ClockOK"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 41,
+        "title": "Recognize continuously observed time",
+        "phase": "Read the clock and elapsed scan time",
+        "gate": [
+          "and",
+          "#ClockOK",
+          "#HaveClock",
+          [
+            "not",
+            "#Fresh"
+          ],
+          "#TickOK",
+          [
+            "cmp",
+            "#ClockStep",
+            ">=",
+            0
+          ],
+          [
+            "cmp",
+            "#ClockStep",
+            "<=",
+            2
+          ]
+        ],
+        "actions": [
+          {
+            "op": "COIL",
+            "out": "#Continuous"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 42,
+        "title": "Latch a calendar warning",
+        "phase": "Read the clock and elapsed scan time",
+        "gate": [
+          "or",
+          [
+            "not",
+            "#RawClock"
+          ],
+          "#Backward",
+          "#ClockJump"
+        ],
+        "actions": [
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".ClockReview",
+            "inputs": {
+              "IN": 1
+            }
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 43,
+        "title": "Monday through Friday",
+        "phase": "Set the weekday shifts",
+        "gate": [
+          "and",
+          [
+            "cmp",
+            "#Weekday",
+            ">=",
+            2
+          ],
+          [
+            "cmp",
+            "#Weekday",
+            "<=",
+            6
+          ]
+        ],
+        "actions": [
+          {
+            "op": "COIL",
+            "out": "#S1Days"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 44,
+        "title": "Monday through Thursday evenings",
+        "phase": "Set the weekday shifts",
+        "gate": [
+          "and",
+          [
+            "cmp",
+            "#Weekday",
+            ">=",
+            2
+          ],
+          [
+            "cmp",
+            "#Weekday",
+            "<=",
+            5
+          ]
+        ],
+        "actions": [
+          {
+            "op": "COIL",
+            "out": "#S2EveningDays"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 45,
+        "title": "Tuesday through Friday mornings",
+        "phase": "Set the weekday shifts",
+        "gate": [
+          "and",
+          [
+            "cmp",
+            "#Weekday",
+            ">=",
+            3
+          ],
+          [
+            "cmp",
+            "#Weekday",
+            "<=",
+            6
+          ]
+        ],
+        "actions": [
+          {
+            "op": "COIL",
+            "out": "#S2MorningDays"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 46,
+        "title": "Shift 1: weekdays 06:30 to 17:00",
+        "phase": "Set the weekday shifts",
+        "gate": [
+          "and",
+          "#ClockOK",
+          "#S1Days",
+          [
+            "cmp",
+            "#MinuteOfDay",
+            ">=",
+            390
+          ],
+          [
+            "cmp",
+            "#MinuteOfDay",
+            "<",
+            1020
+          ]
+        ],
+        "actions": [
+          {
+            "op": "COIL",
+            "out": "#Shift1"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 47,
+        "title": "Shift 2: evening OR following morning",
+        "phase": "Set the weekday shifts",
+        "gate": [
+          "and",
+          "#ClockOK",
+          [
+            "or",
+            [
+              "and",
+              "#S2EveningDays",
+              [
+                "cmp",
+                "#MinuteOfDay",
+                ">=",
+                1020
+              ]
+            ],
+            [
+              "and",
+              "#S2MorningDays",
+              [
+                "cmp",
+                "#MinuteOfDay",
+                "<",
+                360
+              ]
+            ]
+          ]
+        ],
+        "actions": [
+          {
+            "op": "COIL",
+            "out": "#Shift2"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 48,
+        "title": "Production schedule is open",
+        "phase": "Set the weekday shifts",
+        "gate": [
+          "or",
+          "#Shift1",
+          "#Shift2"
+        ],
+        "actions": [
+          {
+            "op": "COIL",
+            "out": "#Scheduled"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 49,
+        "title": "Use today as the shift start date",
+        "phase": "Set the weekday shifts",
+        "gate": true,
+        "actions": [
+          {
+            "op": "MOVE",
+            "out": "#ShiftDay",
+            "inputs": {
+              "IN": "#Day"
+            }
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 50,
+        "title": "Use yesterday for the overnight morning half",
+        "phase": "Set the weekday shifts",
+        "gate": [
+          "and",
+          "#Shift2",
+          [
+            "cmp",
+            "#MinuteOfDay",
+            "<",
+            360
+          ]
+        ],
+        "actions": [
+          {
+            "op": "SUB",
+            "out": "#ShiftDay",
+            "inputs": {
+              "IN1": "#Day",
+              "IN2": 1
+            },
+            "type": "DInt"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 51,
+        "title": "Expected MM6 configuration",
+        "phase": "Set the weekday shifts",
+        "gate": [
+          "and",
+          "%DB200.DBX38.2",
+          "%DB200.DBX49.3"
+        ],
+        "actions": [
+          {
+            "op": "COIL",
+            "out": "#ConfigOK"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 52,
+        "title": "Reporting is deliberately enabled",
+        "phase": "Set the weekday shifts",
+        "gate": [
+          "and",
+          "\"CSI_Setup\".Enable",
+          "\"CSI_Setup\".WiringReviewed",
+          "#ConfigOK"
+        ],
+        "actions": [
+          {
+            "op": "COIL",
+            "out": "#Enabled"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 53,
+        "title": "Inputs, clock and execution are usable",
+        "phase": "Set the weekday shifts",
+        "gate": [
+          "and",
+          "#Enabled",
+          "#RobotDataValid",
+          "#ClockOK",
+          "#TickOK",
+          [
+            "not",
+            "#Fresh"
+          ],
+          [
+            "not",
+            "#AbortCycle"
+          ],
+          [
+            "not",
+            "#ClockJump"
+          ]
+        ],
+        "actions": [
+          {
+            "op": "COIL",
+            "out": "#BaseGood"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 54,
+        "title": "Only observe production within the schedule",
+        "phase": "Set the weekday shifts",
+        "gate": [
+          "and",
+          "#BaseGood",
+          "#Scheduled"
+        ],
+        "actions": [
+          {
+            "op": "COIL",
+            "out": "#AllowRun"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 55,
+        "title": "One-scan closing rising edge",
+        "phase": "Detect edges and synchronize",
+        "gate": [
+          "and",
+          "#CloseCommand",
+          [
+            "not",
+            "#PrevClose"
+          ],
+          [
+            "not",
+            "#Fresh"
+          ]
+        ],
+        "actions": [
+          {
+            "op": "COIL",
+            "out": "#CloseRise"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 56,
+        "title": "One-scan robot-permission rising edge",
+        "phase": "Detect edges and synchronize",
+        "gate": [
+          "and",
+          "#RobotPermit",
+          [
+            "not",
+            "#PrevPermit"
+          ],
+          [
+            "not",
+            "#Fresh"
+          ]
+        ],
+        "actions": [
+          {
+            "op": "COIL",
+            "out": "#PermitRise"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 57,
+        "title": "Snapshot the old observation state",
+        "phase": "Detect edges and synchronize",
+        "gate": true,
+        "actions": [
+          {
+            "op": "MOVE",
+            "out": "#OldState",
+            "inputs": {
+              "IN": "#State"
+            }
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 58,
+        "title": "Discard an untrustworthy or unscheduled observation",
+        "phase": "Detect edges and synchronize",
+        "gate": [
+          "or",
+          [
+            "not",
+            "#AllowRun"
+          ],
+          [
+            "and",
+            [
+              "cmp",
+              "#State",
+              "==",
+              30
+            ],
+            [
+              "not",
+              "#ProductionEligible"
+            ]
+          ]
+        ],
+        "actions": [
+          {
+            "op": "COIL",
+            "out": "#Drop"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 59,
+        "title": "Remember an active cycle being discarded",
+        "phase": "Detect edges and synchronize",
+        "gate": [
+          "and",
+          "#Drop",
+          [
+            "cmp",
+            "#State",
+            "==",
+            30
+          ]
+        ],
+        "actions": [
+          {
+            "op": "COIL",
+            "out": "#SkippedActive"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 60,
+        "title": "Count the discarded active observation",
+        "phase": "Detect edges and synchronize",
+        "gate": "#SkippedActive",
+        "actions": [
+          {
+            "op": "CALL",
+            "block": "CSI_Increment",
+            "instance": null,
+            "inputs": {
+              "Value": "\"CSI_Report\".PartialObservationsSkipped"
+            }
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 61,
+        "title": "Discard only the observer\u2019s live state",
+        "phase": "Detect edges and synchronize",
+        "gate": "#Drop",
+        "actions": [
+          {
+            "op": "MOVE",
+            "out": "#State",
+            "inputs": {
+              "IN": 0
+            }
+          },
+          {
+            "op": "RESET",
+            "out": "#LowSeen"
+          },
+          {
+            "op": "MOVE",
+            "out": "#CycleSec",
+            "inputs": {
+              "IN": 0
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "#CycleMs",
+            "inputs": {
+              "IN": 0
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "#GapSec",
+            "inputs": {
+              "IN": 0
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "#GapMs",
+            "inputs": {
+              "IN": 0
+            }
+          }
+        ],
+        "note": "Held cycle/waiting values and production counters are not reset."
+      },
+      {
+        "number": 62,
+        "title": "Begin synchronization",
+        "phase": "Detect edges and synchronize",
+        "gate": [
+          "and",
+          "#AllowRun",
+          "#ProductionEligible",
+          [
+            "cmp",
+            "#State",
+            "==",
+            0
+          ]
+        ],
+        "actions": [
+          {
+            "op": "MOVE",
+            "out": "#State",
+            "inputs": {
+              "IN": 10
+            }
+          },
+          {
+            "op": "RESET",
+            "out": "#LowSeen"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 63,
+        "title": "Remember permission low while synchronizing",
+        "phase": "Detect edges and synchronize",
+        "gate": [
+          "and",
+          "#AllowRun",
+          "#ProductionEligible",
+          [
+            "cmp",
+            "#State",
+            "==",
+            10
+          ],
+          [
+            "not",
+            "#RobotPermit"
+          ]
+        ],
+        "actions": [
+          {
+            "op": "SET",
+            "out": "#LowSeen"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 64,
+        "title": "Known robot-clear boundary, not a counted cycle",
+        "phase": "Detect edges and synchronize",
+        "gate": [
+          "and",
+          "#AllowRun",
+          "#ProductionEligible",
+          [
+            "cmp",
+            "#State",
+            "==",
+            10
+          ],
+          "#LowSeen",
+          "#PermitRise"
+        ],
+        "actions": [
+          {
+            "op": "COIL",
+            "out": "#SyncPulse"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 65,
+        "title": "Start a known gap after synchronization",
+        "phase": "Detect edges and synchronize",
+        "gate": "#SyncPulse",
+        "actions": [
+          {
+            "op": "MOVE",
+            "out": "#State",
+            "inputs": {
+              "IN": 20
+            }
+          },
+          {
+            "op": "RESET",
+            "out": "#LowSeen"
+          },
+          {
+            "op": "MOVE",
+            "out": "#GapSec",
+            "inputs": {
+              "IN": 0
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "#GapMs",
+            "inputs": {
+              "IN": 0
+            }
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 66,
+        "title": "Record the skipped unknown first cycle",
+        "phase": "Detect edges and synchronize",
+        "gate": "#SyncPulse",
+        "actions": [
+          {
+            "op": "CALL",
+            "block": "CSI_Increment",
+            "instance": null,
+            "inputs": {
+              "Value": "\"CSI_Report\".PartialObservationsSkipped"
+            }
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 67,
+        "title": "Add elapsed time while the cycle is active",
+        "phase": "Time a whole cycle and save it",
+        "gate": [
+          "and",
+          "#AllowRun",
+          "#ProductionEligible",
+          [
+            "cmp",
+            "#State",
+            "==",
+            30
+          ]
+        ],
+        "actions": [
+          {
+            "op": "CALL",
+            "block": "CSI_AddElapsed",
+            "instance": null,
+            "inputs": {
+              "DeltaMs": "#Delta",
+              "Seconds": "#CycleSec",
+              "Millis": "#CycleMs"
+            }
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 68,
+        "title": "Add elapsed time during a known wait",
+        "phase": "Time a whole cycle and save it",
+        "gate": [
+          "and",
+          "#AllowRun",
+          [
+            "cmp",
+            "#State",
+            "==",
+            20
+          ],
+          [
+            "not",
+            "#SyncPulse"
+          ]
+        ],
+        "actions": [
+          {
+            "op": "CALL",
+            "block": "CSI_AddElapsed",
+            "instance": null,
+            "inputs": {
+              "DeltaMs": "#Delta",
+              "Seconds": "#GapSec",
+              "Millis": "#GapMs"
+            }
+          }
+        ],
+        "note": "ProductionEligible may be FALSE during a normal wait; do not use it as an enable contact here."
+      },
+      {
+        "number": 69,
+        "title": "Remember robot permission low inside this cycle",
+        "phase": "Time a whole cycle and save it",
+        "gate": [
+          "and",
+          "#AllowRun",
+          "#ProductionEligible",
+          [
+            "cmp",
+            "#State",
+            "==",
+            30
+          ],
+          [
+            "not",
+            "#RobotPermit"
+          ]
+        ],
+        "actions": [
+          {
+            "op": "SET",
+            "out": "#LowSeen"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 70,
+        "title": "One completed cycle pulse",
+        "phase": "Time a whole cycle and save it",
+        "gate": [
+          "and",
+          "#AllowRun",
+          "#ProductionEligible",
+          [
+            "cmp",
+            "#State",
+            "==",
+            30
+          ],
+          "#LowSeen",
+          "#PermitRise"
+        ],
+        "actions": [
+          {
+            "op": "COIL",
+            "out": "#Complete"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 71,
+        "title": "Convert whole cycle seconds",
+        "phase": "Time a whole cycle and save it",
+        "gate": true,
+        "actions": [
+          {
+            "op": "CONVERT",
+            "out": "#CycleWhole",
+            "inputs": {
+              "IN": "#CycleSec"
+            },
+            "type": "DInt \u2192 Real",
+            "eno": null
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 72,
+        "title": "Convert remaining cycle milliseconds",
+        "phase": "Time a whole cycle and save it",
+        "gate": true,
+        "actions": [
+          {
+            "op": "CONVERT",
+            "out": "#CycleFrac",
+            "inputs": {
+              "IN": "#CycleMs"
+            },
+            "type": "DInt \u2192 Real",
+            "eno": null
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 73,
+        "title": "Assemble cycle seconds for display",
+        "phase": "Time a whole cycle and save it",
+        "gate": true,
+        "actions": [
+          {
+            "op": "CALCULATE",
+            "out": "#CycleValue",
+            "inputs": {
+              "IN1": "#CycleWhole",
+              "IN2": "#CycleFrac"
+            },
+            "type": "Real",
+            "formula": "IN1 + IN2 / 1000.0"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 74,
+        "title": "Store the completed duration before clearing it",
+        "phase": "Time a whole cycle and save it",
+        "gate": "#Complete",
+        "actions": [
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".PreviousCycleSeconds",
+            "inputs": {
+              "IN": "#CycleValue"
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".PreviousCycleValid",
+            "inputs": {
+              "IN": 1
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".LastCycleEndDate",
+            "inputs": {
+              "IN": "#DateLabel"
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".LastCycleEndTime",
+            "inputs": {
+              "IN": "#TimeLabel"
+            }
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 75,
+        "title": "Add exactly one total production cycle",
+        "phase": "Time a whole cycle and save it",
+        "gate": "#Complete",
+        "actions": [
+          {
+            "op": "CALL",
+            "block": "CSI_Increment",
+            "instance": null,
+            "inputs": {
+              "Value": "\"CSI_Report\".TotalCompleted"
+            }
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 76,
+        "title": "End this cycle and begin its waiting interval",
+        "phase": "Time a whole cycle and save it",
+        "gate": "#Complete",
+        "actions": [
+          {
+            "op": "MOVE",
+            "out": "#State",
+            "inputs": {
+              "IN": 20
+            }
+          },
+          {
+            "op": "RESET",
+            "out": "#LowSeen"
+          },
+          {
+            "op": "MOVE",
+            "out": "#GapSec",
+            "inputs": {
+              "IN": 0
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "#GapMs",
+            "inputs": {
+              "IN": 0
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "#CycleSec",
+            "inputs": {
+              "IN": 0
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "#CycleMs",
+            "inputs": {
+              "IN": 0
+            }
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 77,
+        "title": "Record but ignore a secondary closing pulse",
+        "phase": "Time a whole cycle and save it",
+        "gate": [
+          "and",
+          "#AllowRun",
+          [
+            "cmp",
+            "#OldState",
+            "==",
+            30
+          ],
+          "#CloseRise",
+          [
+            "not",
+            "#Complete"
+          ]
+        ],
+        "actions": [
+          {
+            "op": "CALL",
+            "block": "CSI_Increment",
+            "instance": null,
+            "inputs": {
+              "Value": "\"CSI_Report\".IgnoredCloseEdges"
+            }
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 78,
+        "title": "Reject a close that was already high before the boundary",
+        "phase": "Time a whole cycle and save it",
+        "gate": [
+          "and",
+          [
+            "or",
+            "#SyncPulse",
+            "#Complete"
+          ],
+          "#CloseCommand",
+          [
+            "not",
+            "#CloseRise"
+          ]
+        ],
+        "actions": [
+          {
+            "op": "COIL",
+            "out": "#Ambiguous"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 79,
+        "title": "Resynchronize rather than accept a later repress pulse",
+        "phase": "Time a whole cycle and save it",
+        "gate": "#Ambiguous",
+        "actions": [
+          {
+            "op": "MOVE",
+            "out": "#State",
+            "inputs": {
+              "IN": 10
+            }
+          },
+          {
+            "op": "RESET",
+            "out": "#LowSeen"
+          },
+          {
+            "op": "MOVE",
+            "out": "#GapSec",
+            "inputs": {
+              "IN": 0
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "#GapMs",
+            "inputs": {
+              "IN": 0
+            }
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 80,
+        "title": "Accept the next closing start once",
+        "phase": "Capture the waiting interval and start the next cycle",
+        "gate": [
+          "and",
+          "#AllowRun",
+          "#ProductionEligible",
+          [
+            "cmp",
+            "#State",
+            "==",
+            20
+          ],
+          "#CloseRise"
+        ],
+        "actions": [
+          {
+            "op": "COIL",
+            "out": "#StartPulse"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 81,
+        "title": "Convert whole waiting seconds",
+        "phase": "Capture the waiting interval and start the next cycle",
+        "gate": true,
+        "actions": [
+          {
+            "op": "CONVERT",
+            "out": "#GapWhole",
+            "inputs": {
+              "IN": "#GapSec"
+            },
+            "type": "DInt \u2192 Real",
+            "eno": null
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 82,
+        "title": "Convert remaining waiting milliseconds",
+        "phase": "Capture the waiting interval and start the next cycle",
+        "gate": true,
+        "actions": [
+          {
+            "op": "CONVERT",
+            "out": "#GapFrac",
+            "inputs": {
+              "IN": "#GapMs"
+            },
+            "type": "DInt \u2192 Real",
+            "eno": null
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 83,
+        "title": "Assemble waiting seconds for display",
+        "phase": "Capture the waiting interval and start the next cycle",
+        "gate": true,
+        "actions": [
+          {
+            "op": "CALCULATE",
+            "out": "#GapValue",
+            "inputs": {
+              "IN1": "#GapWhole",
+              "IN2": "#GapFrac"
+            },
+            "type": "Real",
+            "formula": "IN1 + IN2 / 1000.0"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 84,
+        "title": "Hold the finished waiting interval",
+        "phase": "Capture the waiting interval and start the next cycle",
+        "gate": "#StartPulse",
+        "actions": [
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".PreviousBetweenSeconds",
+            "inputs": {
+              "IN": "#GapValue"
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".PreviousBetweenValid",
+            "inputs": {
+              "IN": 1
+            }
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 85,
+        "title": "Begin the new measured cycle",
+        "phase": "Capture the waiting interval and start the next cycle",
+        "gate": "#StartPulse",
+        "actions": [
+          {
+            "op": "MOVE",
+            "out": "#State",
+            "inputs": {
+              "IN": 30
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "#CycleSec",
+            "inputs": {
+              "IN": 0
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "#CycleMs",
+            "inputs": {
+              "IN": 0
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "#GapSec",
+            "inputs": {
+              "IN": 0
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "#GapMs",
+            "inputs": {
+              "IN": 0
+            }
+          },
+          {
+            "op": "RESET",
+            "out": "#LowSeen"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 86,
+        "title": "Allow a start whose permission is already low",
+        "phase": "Capture the waiting interval and start the next cycle",
+        "gate": [
+          "and",
+          "#StartPulse",
+          [
+            "not",
+            "#RobotPermit"
+          ]
+        ],
+        "actions": [
+          {
+            "op": "SET",
+            "out": "#LowSeen"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 87,
+        "title": "Detect an unmeasured movement during a waiting interval",
+        "phase": "Capture the waiting interval and start the next cycle",
+        "gate": [
+          "and",
+          "#AllowRun",
+          [
+            "cmp",
+            "#State",
+            "==",
+            20
+          ],
+          [
+            "not",
+            "#SyncPulse"
+          ],
+          [
+            "not",
+            "#Complete"
+          ],
+          [
+            "or",
+            [
+              "not",
+              "#RobotPermit"
+            ],
+            "#CloseRise"
+          ]
+        ],
+        "actions": [
+          {
+            "op": "COIL",
+            "out": "#ResyncGap"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 88,
+        "title": "Discard an ambiguous waiting interval",
+        "phase": "Capture the waiting interval and start the next cycle",
+        "gate": "#ResyncGap",
+        "actions": [
+          {
+            "op": "MOVE",
+            "out": "#State",
+            "inputs": {
+              "IN": 10
+            }
+          },
+          {
+            "op": "RESET",
+            "out": "#LowSeen"
+          },
+          {
+            "op": "MOVE",
+            "out": "#GapSec",
+            "inputs": {
+              "IN": 0
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "#GapMs",
+            "inputs": {
+              "IN": 0
+            }
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 89,
+        "title": "Whether the current observation is complete enough for period totals",
+        "phase": "Hold and roll the hour, day and shift counters",
+        "gate": [
+          "and",
+          "#ClockOK",
+          "#TickOK",
+          [
+            "not",
+            "#Fresh"
+          ],
+          [
+            "not",
+            "#ClockJump"
+          ],
+          [
+            "or",
+            [
+              "not",
+              "#Scheduled"
+            ],
+            [
+              "and",
+              "#BaseGood",
+              [
+                "not",
+                "#SkippedActive"
+              ],
+              [
+                "not",
+                "#Ambiguous"
+              ],
+              [
+                "not",
+                "#ResyncGap"
+              ],
+              [
+                "cmp",
+                "#State",
+                "!=",
+                10
+              ],
+              [
+                "cmp",
+                "#State",
+                "!=",
+                0
+              ]
+            ]
+          ]
+        ],
+        "actions": [
+          {
+            "op": "COIL",
+            "out": "#QualityGood"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 90,
+        "title": "The previous clock hour has ended",
+        "phase": "Hold and roll the hour, day and shift counters",
+        "gate": [
+          "cmp",
+          "#HourKey",
+          ">",
+          "#HourCounter.CurrentKey"
+        ],
+        "actions": [
+          {
+            "op": "COIL",
+            "out": "#EndHour"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 91,
+        "title": "The previous calendar day has ended",
+        "phase": "Hold and roll the hour, day and shift counters",
+        "gate": [
+          "cmp",
+          "#Day",
+          ">",
+          "#DayCounter.CurrentKey"
+        ],
+        "actions": [
+          {
+            "op": "COIL",
+            "out": "#EndDay"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 92,
+        "title": "Calculate the night shift\u2019s following date",
+        "phase": "Hold and roll the hour, day and shift counters",
+        "gate": true,
+        "actions": [
+          {
+            "op": "ADD",
+            "out": "#Shift2EndDay",
+            "inputs": {
+              "IN1": "#Shift2Counter.CurrentKey",
+              "IN2": 1
+            },
+            "type": "DInt"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 93,
+        "title": "The stored day shift has ended",
+        "phase": "Hold and roll the hour, day and shift counters",
+        "gate": [
+          "or",
+          [
+            "cmp",
+            "#Day",
+            ">",
+            "#Shift1Counter.CurrentKey"
+          ],
+          [
+            "and",
+            [
+              "cmp",
+              "#Day",
+              "==",
+              "#Shift1Counter.CurrentKey"
+            ],
+            [
+              "cmp",
+              "#MinuteOfDay",
+              ">=",
+              1020
+            ]
+          ]
+        ],
+        "actions": [
+          {
+            "op": "COIL",
+            "out": "#EndShift1"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 94,
+        "title": "The stored night shift has ended",
+        "phase": "Hold and roll the hour, day and shift counters",
+        "gate": [
+          "or",
+          [
+            "cmp",
+            "#Day",
+            ">",
+            "#Shift2EndDay"
+          ],
+          [
+            "and",
+            [
+              "cmp",
+              "#Day",
+              "==",
+              "#Shift2EndDay"
+            ],
+            [
+              "cmp",
+              "#MinuteOfDay",
+              ">=",
+              360
+            ]
+          ]
+        ],
+        "actions": [
+          {
+            "op": "COIL",
+            "out": "#EndShift2"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 95,
+        "title": "Observed the start of a clock hour",
+        "phase": "Hold and roll the hour, day and shift counters",
+        "gate": [
+          "and",
+          [
+            "cmp",
+            "#Minute",
+            "==",
+            0
+          ],
+          [
+            "cmp",
+            "#Second",
+            "<",
+            3
+          ]
+        ],
+        "actions": [
+          {
+            "op": "COIL",
+            "out": "#BoundaryHour"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 96,
+        "title": "Observed the start of a calendar day",
+        "phase": "Hold and roll the hour, day and shift counters",
+        "gate": [
+          "and",
+          [
+            "cmp",
+            "#MinuteOfDay",
+            "==",
+            0
+          ],
+          [
+            "cmp",
+            "#Second",
+            "<",
+            3
+          ]
+        ],
+        "actions": [
+          {
+            "op": "COIL",
+            "out": "#BoundaryDay"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 97,
+        "title": "Observed 06:30 on a scheduled day",
+        "phase": "Hold and roll the hour, day and shift counters",
+        "gate": [
+          "and",
+          "#Shift1",
+          [
+            "cmp",
+            "#MinuteOfDay",
+            "==",
+            390
+          ],
+          [
+            "cmp",
+            "#Second",
+            "<",
+            3
+          ]
+        ],
+        "actions": [
+          {
+            "op": "COIL",
+            "out": "#BoundaryShift1"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 98,
+        "title": "Observed 17:00 on a scheduled night",
+        "phase": "Hold and roll the hour, day and shift counters",
+        "gate": [
+          "and",
+          "#Shift2",
+          [
+            "cmp",
+            "#MinuteOfDay",
+            "==",
+            1020
+          ],
+          [
+            "cmp",
+            "#Second",
+            "<",
+            3
+          ]
+        ],
+        "actions": [
+          {
+            "op": "COIL",
+            "out": "#BoundaryShift2"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 99,
+        "title": "Update HourCounter through its own multi-instance",
+        "phase": "Hold and roll the hour, day and shift counters",
+        "gate": true,
+        "actions": [
+          {
+            "op": "CALL",
+            "block": "CSI_PeriodCounter",
+            "instance": "#HourCounter",
+            "inputs": {
+              "ClockOK": "#ClockOK",
+              "WindowActive": true,
+              "Key": "#HourKey",
+              "Label": "#HourLabel",
+              "EndReached": "#EndHour",
+              "BoundaryObserved": "#BoundaryHour",
+              "QualityGood": "#QualityGood",
+              "Continuous": "#Continuous",
+              "Restart": "#Fresh",
+              "CountPulse": "#Complete"
+            }
+          }
+        ],
+        "note": "Call every scan, with EN directly on the rail. An inactive shift HOLDS CurrentCount; it does not reset it."
+      },
+      {
+        "number": 100,
+        "title": "Update DayCounter through its own multi-instance",
+        "phase": "Hold and roll the hour, day and shift counters",
+        "gate": true,
+        "actions": [
+          {
+            "op": "CALL",
+            "block": "CSI_PeriodCounter",
+            "instance": "#DayCounter",
+            "inputs": {
+              "ClockOK": "#ClockOK",
+              "WindowActive": true,
+              "Key": "#Day",
+              "Label": "#DateLabel",
+              "EndReached": "#EndDay",
+              "BoundaryObserved": "#BoundaryDay",
+              "QualityGood": "#QualityGood",
+              "Continuous": "#Continuous",
+              "Restart": "#Fresh",
+              "CountPulse": "#Complete"
+            }
+          }
+        ],
+        "note": "Call every scan, with EN directly on the rail. An inactive shift HOLDS CurrentCount; it does not reset it."
+      },
+      {
+        "number": 101,
+        "title": "Update Shift1Counter through its own multi-instance",
+        "phase": "Hold and roll the hour, day and shift counters",
+        "gate": true,
+        "actions": [
+          {
+            "op": "CALL",
+            "block": "CSI_PeriodCounter",
+            "instance": "#Shift1Counter",
+            "inputs": {
+              "ClockOK": "#ClockOK",
+              "WindowActive": "#Shift1",
+              "Key": "#Day",
+              "Label": "#Day",
+              "EndReached": "#EndShift1",
+              "BoundaryObserved": "#BoundaryShift1",
+              "QualityGood": "#QualityGood",
+              "Continuous": "#Continuous",
+              "Restart": "#Fresh",
+              "CountPulse": "#Complete"
+            }
+          }
+        ],
+        "note": "Call every scan, with EN directly on the rail. An inactive shift HOLDS CurrentCount; it does not reset it."
+      },
+      {
+        "number": 102,
+        "title": "Update Shift2Counter through its own multi-instance",
+        "phase": "Hold and roll the hour, day and shift counters",
+        "gate": true,
+        "actions": [
+          {
+            "op": "CALL",
+            "block": "CSI_PeriodCounter",
+            "instance": "#Shift2Counter",
+            "inputs": {
+              "ClockOK": "#ClockOK",
+              "WindowActive": "#Shift2",
+              "Key": "#ShiftDay",
+              "Label": "#ShiftDay",
+              "EndReached": "#EndShift2",
+              "BoundaryObserved": "#BoundaryShift2",
+              "QualityGood": "#QualityGood",
+              "Continuous": "#Continuous",
+              "Restart": "#Fresh",
+              "CountPulse": "#Complete"
+            }
+          }
+        ],
+        "note": "Call every scan, with EN directly on the rail. An inactive shift HOLDS CurrentCount; it does not reset it."
+      },
+      {
+        "number": 103,
+        "title": "Publish HourCounter results",
+        "phase": "Publish reporting tags and remember the inputs",
+        "gate": true,
+        "actions": [
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".CyclesThisHour",
+            "inputs": {
+              "IN": "#HourCounter.CurrentCount"
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".CyclesPreviousHour",
+            "inputs": {
+              "IN": "#HourCounter.PreviousCount"
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".ThisHourKeyUTC",
+            "inputs": {
+              "IN": "#HourCounter.CurrentKey"
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".PreviousHourKeyUTC",
+            "inputs": {
+              "IN": "#HourCounter.PreviousKey"
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".CurrentHourLocalLabel",
+            "inputs": {
+              "IN": "#HourCounter.CurrentLabel"
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".PreviousHourLocalLabel",
+            "inputs": {
+              "IN": "#HourCounter.PreviousLabel"
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".ThisHourPartial",
+            "inputs": {
+              "IN": "#HourCounter.CurrentPartial"
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".PreviousHourPartial",
+            "inputs": {
+              "IN": "#HourCounter.PreviousPartial"
+            }
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 104,
+        "title": "Publish DayCounter results",
+        "phase": "Publish reporting tags and remember the inputs",
+        "gate": true,
+        "actions": [
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".CyclesToday",
+            "inputs": {
+              "IN": "#DayCounter.CurrentCount"
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".CyclesPreviousDay",
+            "inputs": {
+              "IN": "#DayCounter.PreviousCount"
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".TodayKeyLocal",
+            "inputs": {
+              "IN": "#DayCounter.CurrentKey"
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".PreviousDayKeyLocal",
+            "inputs": {
+              "IN": "#DayCounter.PreviousKey"
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".TodayPartial",
+            "inputs": {
+              "IN": "#DayCounter.CurrentPartial"
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".PreviousDayPartial",
+            "inputs": {
+              "IN": "#DayCounter.PreviousPartial"
+            }
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 105,
+        "title": "Publish Shift1Counter results",
+        "phase": "Publish reporting tags and remember the inputs",
+        "gate": true,
+        "actions": [
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".Shift1Current",
+            "inputs": {
+              "IN": "#Shift1Counter.CurrentCount"
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".Shift1Previous",
+            "inputs": {
+              "IN": "#Shift1Counter.PreviousCount"
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".Shift1Day",
+            "inputs": {
+              "IN": "#Shift1Counter.CurrentKey"
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".Shift1PreviousDay",
+            "inputs": {
+              "IN": "#Shift1Counter.PreviousKey"
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".Shift1Partial",
+            "inputs": {
+              "IN": "#Shift1Counter.CurrentPartial"
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".Shift1PreviousPartial",
+            "inputs": {
+              "IN": "#Shift1Counter.PreviousPartial"
+            }
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 106,
+        "title": "Publish Shift2Counter results",
+        "phase": "Publish reporting tags and remember the inputs",
+        "gate": true,
+        "actions": [
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".Shift2Current",
+            "inputs": {
+              "IN": "#Shift2Counter.CurrentCount"
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".Shift2Previous",
+            "inputs": {
+              "IN": "#Shift2Counter.PreviousCount"
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".Shift2Day",
+            "inputs": {
+              "IN": "#Shift2Counter.CurrentKey"
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".Shift2PreviousDay",
+            "inputs": {
+              "IN": "#Shift2Counter.PreviousKey"
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".Shift2Partial",
+            "inputs": {
+              "IN": "#Shift2Counter.CurrentPartial"
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".Shift2PreviousPartial",
+            "inputs": {
+              "IN": "#Shift2Counter.PreviousPartial"
+            }
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 107,
+        "title": "Default live duration displays to zero",
+        "phase": "Publish reporting tags and remember the inputs",
+        "gate": true,
+        "actions": [
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".CycleSeconds",
+            "inputs": {
+              "IN": 0.0
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".BetweenCycleSeconds",
+            "inputs": {
+              "IN": 0.0
+            }
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 108,
+        "title": "Publish a live cycle, except on its starting scan",
+        "phase": "Publish reporting tags and remember the inputs",
+        "gate": [
+          "and",
+          [
+            "cmp",
+            "#State",
+            "==",
+            30
+          ],
+          [
+            "not",
+            "#StartPulse"
+          ]
+        ],
+        "actions": [
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".CycleSeconds",
+            "inputs": {
+              "IN": "#CycleValue"
+            }
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 109,
+        "title": "Publish a live known waiting interval",
+        "phase": "Publish reporting tags and remember the inputs",
+        "gate": [
+          "cmp",
+          "#State",
+          "==",
+          20
+        ],
+        "actions": [
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".BetweenCycleSeconds",
+            "inputs": {
+              "IN": "#GapValue"
+            }
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 110,
+        "title": "Publish current state and readable clock",
+        "phase": "Publish reporting tags and remember the inputs",
+        "gate": true,
+        "actions": [
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".MonitorState",
+            "inputs": {
+              "IN": "#State"
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".LocalDateYYYYMMDD",
+            "inputs": {
+              "IN": "#DateLabel"
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".LocalTimeHHMMSS",
+            "inputs": {
+              "IN": "#TimeLabel"
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".GapCompleted",
+            "inputs": {
+              "IN": 0
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".ClockUnassigned",
+            "inputs": {
+              "IN": 0
+            }
+          }
+        ],
+        "note": "GapCompleted and ClockUnassigned are reserved zero in LAD revision 3; off-schedule or invalid-clock cycles are not counted."
+      },
+      {
+        "number": 111,
+        "title": "Clear integer status fields before setting their TRUE values",
+        "phase": "Publish reporting tags and remember the inputs",
+        "gate": true,
+        "actions": [
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".CurrentShift",
+            "inputs": {
+              "IN": 0
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".SignalsValid",
+            "inputs": {
+              "IN": 0
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".ClockValid",
+            "inputs": {
+              "IN": 0
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".CycleActive",
+            "inputs": {
+              "IN": 0
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".BetweenActive",
+            "inputs": {
+              "IN": 0
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".ObserverEnabled",
+            "inputs": {
+              "IN": 0
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".ConfigurationOK",
+            "inputs": {
+              "IN": 0
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".ProductionMode",
+            "inputs": {
+              "IN": 0
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".AbortActive",
+            "inputs": {
+              "IN": 0
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".CloseCommand",
+            "inputs": {
+              "IN": 0
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".RobotPermit",
+            "inputs": {
+              "IN": 0
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".Synchronized",
+            "inputs": {
+              "IN": 0
+            }
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 112,
+        "title": "Set SignalsValid status",
+        "phase": "Publish reporting tags and remember the inputs",
+        "gate": "#RobotDataValid",
+        "actions": [
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".SignalsValid",
+            "inputs": {
+              "IN": 1
+            }
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 113,
+        "title": "Set ClockValid status",
+        "phase": "Publish reporting tags and remember the inputs",
+        "gate": "#ClockOK",
+        "actions": [
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".ClockValid",
+            "inputs": {
+              "IN": 1
+            }
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 114,
+        "title": "Set CycleActive status",
+        "phase": "Publish reporting tags and remember the inputs",
+        "gate": [
+          "cmp",
+          "#State",
+          "==",
+          30
+        ],
+        "actions": [
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".CycleActive",
+            "inputs": {
+              "IN": 1
+            }
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 115,
+        "title": "Set BetweenActive status",
+        "phase": "Publish reporting tags and remember the inputs",
+        "gate": [
+          "cmp",
+          "#State",
+          "==",
+          20
+        ],
+        "actions": [
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".BetweenActive",
+            "inputs": {
+              "IN": 1
+            }
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 116,
+        "title": "Set ObserverEnabled status",
+        "phase": "Publish reporting tags and remember the inputs",
+        "gate": "#Enabled",
+        "actions": [
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".ObserverEnabled",
+            "inputs": {
+              "IN": 1
+            }
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 117,
+        "title": "Set ConfigurationOK status",
+        "phase": "Publish reporting tags and remember the inputs",
+        "gate": "#ConfigOK",
+        "actions": [
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".ConfigurationOK",
+            "inputs": {
+              "IN": 1
+            }
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 118,
+        "title": "Set ProductionMode status",
+        "phase": "Publish reporting tags and remember the inputs",
+        "gate": "#ProductionEligible",
+        "actions": [
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".ProductionMode",
+            "inputs": {
+              "IN": 1
+            }
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 119,
+        "title": "Set AbortActive status",
+        "phase": "Publish reporting tags and remember the inputs",
+        "gate": "#AbortCycle",
+        "actions": [
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".AbortActive",
+            "inputs": {
+              "IN": 1
+            }
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 120,
+        "title": "Set CloseCommand status",
+        "phase": "Publish reporting tags and remember the inputs",
+        "gate": "#CloseCommand",
+        "actions": [
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".CloseCommand",
+            "inputs": {
+              "IN": 1
+            }
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 121,
+        "title": "Set RobotPermit status",
+        "phase": "Publish reporting tags and remember the inputs",
+        "gate": "#RobotPermit",
+        "actions": [
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".RobotPermit",
+            "inputs": {
+              "IN": 1
+            }
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 122,
+        "title": "Set Synchronized status",
+        "phase": "Publish reporting tags and remember the inputs",
+        "gate": [
+          "or",
+          [
+            "cmp",
+            "#State",
+            "==",
+            20
+          ],
+          [
+            "cmp",
+            "#State",
+            "==",
+            30
+          ]
+        ],
+        "actions": [
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".Synchronized",
+            "inputs": {
+              "IN": 1
+            }
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 123,
+        "title": "Show shift 1 only inside its window",
+        "phase": "Publish reporting tags and remember the inputs",
+        "gate": "#Shift1",
+        "actions": [
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".CurrentShift",
+            "inputs": {
+              "IN": 1
+            }
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 124,
+        "title": "Show shift 2 only inside its window",
+        "phase": "Publish reporting tags and remember the inputs",
+        "gate": "#Shift2",
+        "actions": [
+          {
+            "op": "MOVE",
+            "out": "\"CSI_Report\".CurrentShift",
+            "inputs": {
+              "IN": 2
+            }
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 125,
+        "title": "Record initialization/restart",
+        "phase": "Publish reporting tags and remember the inputs",
+        "gate": "#Fresh",
+        "actions": [
+          {
+            "op": "CALL",
+            "block": "CSI_Increment",
+            "instance": null,
+            "inputs": {
+              "Value": "\"CSI_Report\".RestartEvents"
+            }
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 126,
+        "title": "Remember the latest non-backward UTC time",
+        "phase": "Publish reporting tags and remember the inputs",
+        "gate": [
+          "and",
+          "#RawClock",
+          [
+            "not",
+            "#Backward"
+          ]
+        ],
+        "actions": [
+          {
+            "op": "MOVE",
+            "out": "#LastUtcMinute",
+            "inputs": {
+              "IN": "#UtcMinuteKey"
+            }
+          },
+          {
+            "op": "MOVE",
+            "out": "#LastUtcSecond",
+            "inputs": {
+              "IN": "#UtcSecond"
+            }
+          },
+          {
+            "op": "SET",
+            "out": "#HaveClock"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 127,
+        "title": "Remember the closing input LAST",
+        "phase": "Publish reporting tags and remember the inputs",
+        "gate": "#CloseCommand",
+        "actions": [
+          {
+            "op": "COIL",
+            "out": "#PrevClose"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 128,
+        "title": "Remember the robot input LAST",
+        "phase": "Publish reporting tags and remember the inputs",
+        "gate": "#RobotPermit",
+        "actions": [
+          {
+            "op": "COIL",
+            "out": "#PrevPermit"
+          }
+        ],
+        "note": ""
+      },
+      {
+        "number": 129,
+        "title": "Seed the next scan and consume startup",
+        "phase": "Publish reporting tags and remember the inputs",
+        "gate": true,
+        "actions": [
+          {
+            "op": "MOVE",
+            "out": "#PrevTick",
+            "inputs": {
+              "IN": "#TickNow"
+            }
+          },
+          {
+            "op": "SET",
+            "out": "#Initialized"
+          },
+          {
+            "op": "RESET",
+            "out": "\"CSI_Setup\".StartupPending"
+          }
+        ],
+        "note": ""
+      }
+    ]
+  }
+}

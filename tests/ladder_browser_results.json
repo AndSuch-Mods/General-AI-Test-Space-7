@@ -1,0 +1,29 @@
+{
+  "passed": 21,
+  "checks": [
+    "All compact tasks render and MM6 is open",
+    "Dark appearance stays on in a light browser",
+    "Existing machine monitoring checks survive",
+    "SCL completion does not mark LAD work done",
+    "Retired SCL notes are preserved",
+    "Old SCL report DB number is not silently reused",
+    "Main route contains no SCL import or body-paste panels",
+    "All authored LAD networks are present",
+    "Opening a rung preserves its heading position",
+    "Rung shows actual contacts/coils rather than SCL",
+    "Complete moves the task to the matching Completed folder",
+    "Completing a step keeps the next row anchored",
+    "Completion, note and new DB field persist",
+    "Restore returns the original ladder task order",
+    "Kepware reads the LAD DB number with unchanged offsets",
+    "Address reference still exports all sixty fields",
+    "Backup retains old and new notes/DB fields",
+    "Progress import restores the ladder state",
+    "Expanded ladder content fits a mobile viewport",
+    "Ladder networks remain available offline",
+    "No browser JavaScript errors"
+  ],
+  "live_browser": true,
+  "plc_tested": false,
+  "scope": "Live browser/localStorage/offline"
+}
