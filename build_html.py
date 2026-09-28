@@ -4,10 +4,11 @@ import json,hashlib
 from checklist_data import build_data
 from ladder_steps import ladder_data, finalize
 from compact_steps import compact_data, finalize_compact
+from retention_notes import clarify_retention, finalize_retention
 from manual_steps import manual_data
 from csi_branding import rename_data, renamed_source, decorate_markup, write_assets
 R=Path(__file__).parent
-D=compact_data(ladder_data(rename_data(manual_data(build_data()))))
+D=clarify_retention(compact_data(ladder_data(rename_data(manual_data(build_data())))))
 source=renamed_source((R/'downloads/MM6_Reporting_V2.scl').read_text(encoding='utf-8'))
 def js(obj):return json.dumps(obj,ensure_ascii=False).replace('</','<\\/')
 (R/'content.json').write_text(json.dumps(D,ensure_ascii=False,indent=2))
@@ -29,3 +30,5 @@ write_assets(R)
 finalize(R)
 
 finalize_compact(R)
+
+finalize_retention(R)
