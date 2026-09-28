@@ -1,4 +1,4 @@
-const CACHE='machine-reporting-compact-v9-autostart-20260928';
+const CACHE='machine-reporting-retention-guide-v10-20260928';
 const HOME=new URL('./index.html',self.location.href).href;
 const ASSETS=["./index.html", "./manifest.webmanifest", "./checklist-icon.svg", "./checklist-icon-32.png", "./apple-touch-icon.png", "./checklist-icon-192.png", "./checklist-icon-512.png", "./compact_reference.json"];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));
