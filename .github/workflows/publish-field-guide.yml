@@ -3,6 +3,7 @@ on:
   push:
     branches: [main]
     paths:
+      - robot_gate_patch.py
       - input_notes.py
       - input_mapping_evidence.md
       - tests/input_notes_test.py
@@ -45,6 +46,7 @@ jobs:
         run: |
           python3 machine_rollout.py --install
           python3 input_notes.py --install
+          python3 robot_gate_patch.py
       - name: Install build and browser tools
         run: |
           python3 -m pip install --disable-pip-version-check Pillow playwright
@@ -75,7 +77,7 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add tests/input_notes_results.json tests/rollout_results.json tests/restart_results.json tests/compact_results.json tests/compact_browser_results.json build_html.py README.md AGENTS.md index.html content.json compact_reference.json ladder_spec.json machine_rollout_reference.json sw.js manifest.webmanifest .nojekyll
+          git add robot_gate_patch.py input_notes.py input_mapping_evidence.md tests/input_notes_test.py AGENTS.md tests/input_notes_results.json tests/rollout_results.json tests/restart_results.json tests/compact_results.json tests/compact_browser_results.json build_html.py README.md AGENTS.md index.html content.json compact_reference.json ladder_spec.json machine_rollout_reference.json sw.js manifest.webmanifest .nojekyll
           git add -u
           if ! git diff --cached --quiet; then
             git commit -m 'Publish sourced call-input meanings and pending robot-quality check'
@@ -118,7 +120,7 @@ jobs:
           assert inputs['live_browser'] is True
           with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as summary:
               summary.write('Published and verified: '+base+'\n\n')
-              summary.write('English explanations for all five FB inputs; M50.2/M50.3 mode sources and DB20.DBX0.1 class-1 sequencer-reset source traced in both supplied archives. No single existing RobotDataValid bit is claimed. MM6 has a conditional read-only GET_DIAG recipe after verifying the current input submodule; legacy MM4/MM5 quality mapping is still unresolved.\n\n')
+              summary.write('English explanations for all five FB inputs; M50.2/M50.3 mode sources and DB20.DBX0.1 class-1 sequencer-reset source traced in both supplied archives. RobotDataValid is documented as a practical robot-operational gate: MM6 I700.4/I700.5/NOT I700.6 (live-observed TRUE/TRUE/FALSE through a normal cycle); MM4/MM5 use archive-mapped I500.4/I500.5/NOT I500.6 and still require a live cycle check. This is not presented as PROFINET packet quality.\n\n')
               summary.write(str(inputs['passed'])+' input-note checks passed in addition to prior restart, compact-browser and rollout regressions. The first seven MM6 tasks, 66 FB networks, 12 reporting fields and offsets were not changed. No TIA compilation or hardware diagnostics testing was performed.\n\n')
               summary.write('No extra screenshot/test artifacts retained; required Pages artifact retained for one day. No PLC settings, machine bits or billing settings changed.\n')
           PY
