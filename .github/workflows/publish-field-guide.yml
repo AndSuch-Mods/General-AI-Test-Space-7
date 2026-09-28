@@ -5,6 +5,8 @@ on:
     paths:
       - compact_spec.py
       - compact_steps.py
+      - restart_update.py
+      - tests/restart_test.py
       - tests/compact_test.py
       - tests/compact_browser_test.py
       - checklist_data.py
@@ -32,17 +34,16 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-      - name: Install the reviewed compact day-night update
+      - name: Install reviewed automatic restart update
         run: |
           python3 - <<'PY'
           import base64, hashlib, io, lzma, tarfile
           from pathlib import Path
-          parts=[Path('_update/daynight-20260928-%d.b64'%i) for i in (1,2)]
-          if any(p.exists() for p in parts):
-              assert all(p.exists() for p in parts), 'Incomplete compact update'
-              packed=base64.b64decode(''.join(p.read_text().strip() for p in parts),validate=True)
-              assert hashlib.sha256(packed).hexdigest()=='fcf44660377ecadc5a9e8682c697ca22734b705a912866eafc0a1c8a1aed60dd'
-              allowed={'compact_spec.py','compact_steps.py','tests/compact_test.py','tests/compact_browser_test.py'}
+          part=Path('_update/restart-20260928.b64')
+          if part.exists():
+              packed=base64.b64decode(part.read_text().strip(),validate=True)
+              assert hashlib.sha256(packed).hexdigest()=='6098d3b9fab81577ccfbb29891974d9bc4ddc8fe7d9b9f8a5202f57377b528fd'
+              allowed={'restart_update.py','tests/restart_test.py'}
               with tarfile.open(fileobj=io.BytesIO(lzma.decompress(packed)),mode='r:') as archive:
                   assert {m.name for m in archive.getmembers()}==allowed
                   for member in archive.getmembers():
@@ -50,21 +51,20 @@ jobs:
                       assert member.isfile() and not path.is_absolute() and '..' not in path.parts
                       path.parent.mkdir(parents=True,exist_ok=True)
                       path.write_bytes(archive.extractfile(member).read())
-              for part in parts:part.unlink()
-              print('Reviewed compact update checksum verified.')
+              part.unlink()
           PY
+          python3 restart_update.py
           python3 compact_steps.py --install
       - name: Install build and browser tools
         run: |
           python3 -m pip install --disable-pip-version-check Pillow playwright
           python3 -m playwright install --with-deps chromium
-      - name: Build and test the compact LAD recipe
+      - name: Build and test compact timing and retained restart behavior
         run: |
-          echo 'eb709811803d67a10be673682d831cb80bf25cf814d40c612f753730e17a8b49  downloads/MM6_Reporting_V2.scl' | sha256sum -c -
           python3 build_html.py
-          python3 tests/compact_test.py
+          python3 tests/restart_test.py
           node --check app.js
-      - name: Verify the live-browser checklist and 12-field map
+      - name: Verify browser checklist and unchanged 12-field map
         env:
           REQUIRE_LIVE_BROWSER: '1'
         run: python3 tests/compact_browser_test.py
@@ -72,10 +72,10 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add compact_spec.py compact_steps.py tests/compact_test.py tests/compact_browser_test.py tests/compact_results.json tests/compact_browser_results.json app.js build_html.py README.md AGENTS.md index.html content.json compact_reference.json ladder_spec.json sw.js manifest.webmanifest .nojekyll
+          git add restart_update.py tests/restart_test.py tests/restart_results.json compact_spec.py compact_steps.py tests/compact_test.py tests/compact_browser_test.py tests/compact_results.json tests/compact_browser_results.json app.js build_html.py README.md AGENTS.md index.html content.json compact_reference.json ladder_spec.json sw.js manifest.webmanifest .nojekyll
           git add -u
           if ! git diff --cached --quiet; then
-            git commit -m 'Publish compact day/night reporting guide and matching 12-tag addresses'
+            git commit -m 'Remove setup DB; reset live state on startup and retain reporting history'
             git push
           fi
       - name: Prepare the public app
@@ -89,7 +89,7 @@ jobs:
       - name: Publish the checklist
         id: deployment
         uses: actions/deploy-pages@v4
-      - name: Verify published compact guide
+      - name: Verify published automatic restart guide
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -100,7 +100,7 @@ jobs:
               expected=Path(name).read_bytes()
               for attempt in range(12):
                   try:
-                      request=Request(base+name+'?verify='+os.environ['GITHUB_SHA'],headers={'User-Agent':'Compact-CSI-checklist-verification'})
+                      request=Request(base+name+'?verify='+os.environ['GITHUB_SHA'],headers={'User-Agent':'CSI-restart-guide-verification'})
                       with urlopen(request,timeout=20) as response:
                           actual=response.read()
                           assert response.status==200
@@ -112,11 +112,11 @@ jobs:
                       print('Retry:',name,exc)
                       time.sleep(10)
           browser=json.loads(Path('tests/compact_browser_results.json').read_text())
-          model=json.loads(Path('tests/compact_results.json').read_text())
+          model=json.loads(Path('tests/restart_results.json').read_text())
           assert browser['live_browser'] is True
           with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as summary:
               summary.write('Published and verified: '+base+'\n\n')
-              summary.write('CSI_Report now has 12 fields / 48 bytes, with DayShiftCurrent/Previous and NightShiftCurrent/Previous. The single LAD FB adds local variables per network. The new Kepware map does not reuse old offsets or DB numbers.\n\n')
-              summary.write(str(model['passed'])+' authored-network checks and '+str(browser['passed'])+' live browser checks passed. No TIA compilation or PLC execution was performed.\n\n')
-              summary.write('Dark theme, saved notes, Completed/restore and offline use were retained. No extra screenshot artifacts are stored. The Pages artifact has one-day retention.\n')
+              summary.write('No CSI_Setup or setup enable write. Retain the 12 report fields and four period keys; all other Static state is non-retentive. First cyclic call clears only live timing and resynchronizes. Day/night names and all 48-byte offsets are unchanged.\n\n')
+              summary.write(str(model['base_compact_checks'])+' existing model checks, '+str(model['passed'])+' restart checks and '+str(browser['passed'])+' live browser checks passed. Tests simulate the configured retention; no TIA compilation or CPU power-loss test was performed.\n\n')
+              summary.write('Dark mode, user notes, retired setup notes, Completed/restore and offline use are preserved. No additional test artifacts retained; Pages artifact retained for one day.\n')
           PY
