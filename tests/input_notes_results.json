@@ -1,0 +1,33 @@
+{
+  "passed": 25,
+  "checks": [
+    "Applying notes twice does not duplicate them",
+    "MM4 contains exact production-mode and reset source addresses",
+    "MM4 distinguishes an unresolved existing RobotDataValid mapping",
+    "MM4 explains all five input meanings",
+    "MM5 contains exact production-mode and reset source addresses",
+    "MM5 distinguishes an unresolved existing RobotDataValid mapping",
+    "MM5 explains all five input meanings",
+    "MM6 contains exact production-mode and reset source addresses",
+    "MM6 distinguishes an unresolved existing RobotDataValid mapping",
+    "MM6 explains all five input meanings",
+    "Existing twelve report members and offsets unchanged",
+    "No permanent-TRUE data-valid recipe is presented",
+    "All 42 existing checklist tasks remain",
+    "All 66 existing ladder networks remain",
+    "Dark mode unchanged",
+    "MM4 has one definition table with five rows",
+    "MM5 has one definition table with five rows",
+    "MM6 has one definition table with five rows",
+    "OB1 TEMP declaration and OR expression are visible",
+    "Read-only diagnostic is conditional on actual hardware confirmation",
+    "Diagnostic recipe requires successful return and Good bit",
+    "No duplicate element IDs",
+    "Expanded instructions stay within mobile page width",
+    "No browser script errors",
+    "Input notes work offline"
+  ],
+  "live_browser": true,
+  "plc_tested": false,
+  "scope": "Documentation/DOM checks; diagnostic mapping not hardware-tested."
+}

@@ -35,3 +35,6 @@ finalize_retention(R)
 
 from machine_rollout import finalize_rollout
 finalize_rollout(R)
+
+from input_notes import finalize_inputs
+finalize_inputs(R)
