@@ -1,21 +1,19 @@
-name: Publish LAD checklist
+name: Publish compact CSI checklist
 on:
   push:
     branches: [main]
     paths:
-      - ladder_spec.py
-      - ladder_engine.py
-      - ladder_steps.py
-      - tests/ladder_test.py
-      - tests/ladder_browser_test.py
+      - compact_spec.py
+      - compact_steps.py
+      - tests/compact_test.py
+      - tests/compact_browser_test.py
       - checklist_data.py
-      - manual_steps.py
+      - ladder_steps.py
       - csi_branding.py
       - csi_theme.css
       - app.js
       - style.css
       - build_html.py
-      - schema_v2.json
       - .github/workflows/publish-field-guide.yml
   workflow_dispatch:
 permissions:
@@ -34,17 +32,17 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-      - name: Install the reviewed LAD guide
+      - name: Install the reviewed compact day-night update
         run: |
           python3 - <<'PY'
           import base64, hashlib, io, lzma, tarfile
           from pathlib import Path
-          parts=[Path('_update/ladder-%d.b64'%i) for i in range(1,4)]
+          parts=[Path('_update/daynight-20260928-%d.b64'%i) for i in (1,2)]
           if any(p.exists() for p in parts):
-              assert all(p.exists() for p in parts),'Incomplete LAD update'
+              assert all(p.exists() for p in parts), 'Incomplete compact update'
               packed=base64.b64decode(''.join(p.read_text().strip() for p in parts),validate=True)
-              assert hashlib.sha256(packed).hexdigest()=='0efd37fc1eee880332bc2fb773edee5493419891428f76b593f294a7a3a2aec4'
-              allowed={'ladder_spec.py','ladder_engine.py','ladder_steps.py','tests/ladder_test.py','tests/ladder_browser_test.py'}
+              assert hashlib.sha256(packed).hexdigest()=='fcf44660377ecadc5a9e8682c697ca22734b705a912866eafc0a1c8a1aed60dd'
+              allowed={'compact_spec.py','compact_steps.py','tests/compact_test.py','tests/compact_browser_test.py'}
               with tarfile.open(fileobj=io.BytesIO(lzma.decompress(packed)),mode='r:') as archive:
                   assert {m.name for m in archive.getmembers()}==allowed
                   for member in archive.getmembers():
@@ -52,40 +50,38 @@ jobs:
                       assert member.isfile() and not path.is_absolute() and '..' not in path.parts
                       path.parent.mkdir(parents=True,exist_ok=True)
                       path.write_bytes(archive.extractfile(member).read())
-              for p in parts:p.unlink()
-              print('Reviewed LAD update checksum matched.')
+              for part in parts:part.unlink()
+              print('Reviewed compact update checksum verified.')
           PY
-          python3 manual_steps.py --install
-          python3 csi_branding.py --install
-          python3 ladder_steps.py --install
+          python3 compact_steps.py --install
       - name: Install build and browser tools
         run: |
           python3 -m pip install --disable-pip-version-check Pillow playwright
           python3 -m playwright install --with-deps chromium
-      - name: Build the ladder checklist and test its network records
+      - name: Build and test the compact LAD recipe
         run: |
           echo 'eb709811803d67a10be673682d831cb80bf25cf814d40c612f753730e17a8b49  downloads/MM6_Reporting_V2.scl' | sha256sum -c -
           python3 build_html.py
-          python3 tests/ladder_test.py
+          python3 tests/compact_test.py
           node --check app.js
-      - name: Test ladder instructions, saved progress and offline use
+      - name: Verify the live-browser checklist and 12-field map
         env:
           REQUIRE_LIVE_BROWSER: '1'
-        run: python3 tests/ladder_browser_test.py
-      - name: Save the guide and test results
+        run: python3 tests/compact_browser_test.py
+      - name: Save reviewed files and generated page
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add ladder_spec.py ladder_engine.py ladder_steps.py tests/ladder_test.py tests/ladder_browser_test.py tests/ladder_results.json tests/ladder_browser_results.json app.js build_html.py README.md AGENTS.md index.html content.json sw.js manifest.webmanifest .nojekyll ladder_spec.json
+          git add compact_spec.py compact_steps.py tests/compact_test.py tests/compact_browser_test.py tests/compact_results.json tests/compact_browser_results.json app.js build_html.py README.md AGENTS.md index.html content.json compact_reference.json ladder_spec.json sw.js manifest.webmanifest .nojekyll
           git add -u
           if ! git diff --cached --quiet; then
-            git commit -m 'Publish hand-built LAD networks, weekday schedule and held shift totals'
+            git commit -m 'Publish compact day/night reporting guide and matching 12-tag addresses'
             git push
           fi
       - name: Prepare the public app
         run: |
           mkdir -p _site
-          cp index.html sw.js manifest.webmanifest .nojekyll ladder_spec.json checklist-icon.svg checklist-icon-32.png checklist-icon-192.png checklist-icon-512.png apple-touch-icon.png _site/
+          cp index.html sw.js manifest.webmanifest .nojekyll compact_reference.json ladder_spec.json checklist-icon.svg checklist-icon-32.png checklist-icon-192.png checklist-icon-512.png apple-touch-icon.png _site/
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
@@ -93,19 +89,18 @@ jobs:
       - name: Publish the checklist
         id: deployment
         uses: actions/deploy-pages@v4
-      - name: Verify the published guide and LAD reference
+      - name: Verify published compact guide
         run: |
           python3 - <<'PY'
           from pathlib import Path
           from urllib.request import Request,urlopen
           import hashlib,json,os,time
           base='https://andsuch-mods.github.io/General-AI-Test-Space-7/'
-          names=['index.html','sw.js','manifest.webmanifest','ladder_spec.json','checklist-icon.svg','apple-touch-icon.png']
-          for name in names:
+          for name in ['index.html','sw.js','manifest.webmanifest','compact_reference.json','ladder_spec.json']:
               expected=Path(name).read_bytes()
               for attempt in range(12):
                   try:
-                      request=Request(base+name+'?verify='+os.environ['GITHUB_SHA'],headers={'User-Agent':'LAD-checklist-verification'})
+                      request=Request(base+name+'?verify='+os.environ['GITHUB_SHA'],headers={'User-Agent':'Compact-CSI-checklist-verification'})
                       with urlopen(request,timeout=20) as response:
                           actual=response.read()
                           assert response.status==200
@@ -116,12 +111,12 @@ jobs:
                       if attempt==11:raise
                       print('Retry:',name,exc)
                       time.sleep(10)
-          browser=json.loads(Path('tests/ladder_browser_results.json').read_text())
-          model=json.loads(Path('tests/ladder_results.json').read_text())
+          browser=json.loads(Path('tests/compact_browser_results.json').read_text())
+          model=json.loads(Path('tests/compact_results.json').read_text())
           assert browser['live_browser'] is True
           with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as summary:
-              summary.write('Published and verified manual LAD checklist: '+base+'\n\n')
-              summary.write(str(model['passed'])+' authored-network checks and '+str(browser['passed'])+' live browser checks passed. These do not compile LAD in TIA or test a PLC.\n\n')
-              summary.write('MM6 instructions now show LAD contacts, coils, boxes and exact pins. Weekday shift windows, weekend exclusions and held shift counts are included. The dark layout and prior notes are preserved; new LAD tasks do not inherit SCL completion.\n\n')
-              summary.write('No extra screenshot/test ZIP artifacts retained. Only the required Pages artifact is stored for one day. No PLC, billing or safety-program changes were performed.\n')
+              summary.write('Published and verified: '+base+'\n\n')
+              summary.write('CSI_Report now has 12 fields / 48 bytes, with DayShiftCurrent/Previous and NightShiftCurrent/Previous. The single LAD FB adds local variables per network. The new Kepware map does not reuse old offsets or DB numbers.\n\n')
+              summary.write(str(model['passed'])+' authored-network checks and '+str(browser['passed'])+' live browser checks passed. No TIA compilation or PLC execution was performed.\n\n')
+              summary.write('Dark theme, saved notes, Completed/restore and offline use were retained. No extra screenshot artifacts are stored. The Pages artifact has one-day retention.\n')
           PY
