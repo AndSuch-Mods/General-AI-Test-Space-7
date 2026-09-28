@@ -1,0 +1,1 @@
+MM4/MM5 use the archived robot status roles AutoOn, RunChainOK, and ExecutionError, with live verification before commissioning.
