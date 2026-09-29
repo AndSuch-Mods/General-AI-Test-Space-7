@@ -6,7 +6,7 @@ from html import escape
 import copy,json,re,os
 
 ROOT=Path(__file__).parent
-BUILD='2026-09-29-field-confirmed-mm456-v14'
+BUILD='2026-09-29-field-confirmed-mm456-v15'
 PTC='https://support.ptc.com/help/kepware/drivers/en/kepware/drivers/SIEMENSTCPIPETHERNET/Standard_S7_300_400_Item_Syntax.html'
 
 def code(x): return '<code>'+escape(str(x))+'</code>'
@@ -30,11 +30,14 @@ MM6_ROWS=[
  ('TotalCompleted','Long',44,'DINT'),
 ]
 
-def mm6_address_table():
+def address_table(db):
  rows=[]
  for name,kep,off,s7 in MM6_ROWS:
-  rows.append((code(name),kep,str(off),code('%DB56.DBD'+str(off)),code('DB56,'+s7+str(off))))
+  rows.append((code(name),kep,str(off),code('%DB'+str(db)+'.DBD'+str(off)),code('DB'+str(db)+','+s7+str(off))))
  return table(['Tag','Kepware type','Byte','TIA absolute','Kepware item'],rows)
+
+def mm6_address_table():
+ return address_table(56)
 
 def clock_hmi(m):
  return panel('field-clock-'+m,'Clock + HMI parity: hunt the template before copying time logic',
@@ -69,15 +72,16 @@ def kepware_mm(m,ident):
    '<p><strong>Confirmed from the running TIA watch table:</strong> '+code(report)+' = <strong>DB56</strong>. The TIA absolute address is shown beside the actual Kepware item string.</p>'+
    mm6_address_table()+
    '<p>Kepware Standard S7 DB syntax is <code>DB&lt;number&gt;,&lt;S7 type&gt;&lt;byte offset&gt;</code>. Keep all 12 tags <strong>Read Only</strong>. <a href="'+PTC+'" target="_blank" rel="noopener noreferrer">PTC standard S7 item syntax</a>.</p>')
- return panel(ident,m+' Kepware: confirm the DB, then use the same 12 byte offsets',
+ return panel(ident,m+' reserved Kepware addresses — DB66',
+  '<p><strong>Reserved on site:</strong> '+code(report)+' is planned as <strong>DB66</strong>. A project-wide search for <code>DB66</code> returned no matches on both MM4 and MM5 before this reservation. This is a planned block number until the new report DB is actually created and compiled.</p>'+
   steps(
-   'Open <strong>'+report+'</strong> in TIA and record the actual DB number assigned on this PLC. Do not reuse MM6 DB56 unless TIA on '+m+' actually says DB56.',
-   'Verify byte 0 is PreviousCycleSeconds and byte 44 is TotalCompleted. All 12 members are four bytes wide in the compact layout.',
-   'For each tag, the TIA absolute form is <code>%DB&lt;N&gt;.DBD&lt;byte&gt;</code>. The Kepware Standard S7 item is <code>DB&lt;N&gt;,REAL&lt;byte&gt;</code> for the first three seconds values and <code>DB&lt;N&gt;,DINT&lt;byte&gt;</code> for the counters.',
-   'Enter the confirmed DB number in the live map below; the app will spell out both complete addresses. Create the tags under the '+m+' device, keep Client access Read Only, and prove PreviousCycleSeconds against TIA before bulk-adding the rest.'
+   'When creating <strong>'+report+'</strong>, assign <strong>block number 66</strong> instead of accepting a different automatic number. Do not use DB66 for the reporting instance DB.',
+   'Before the first download, verify TIA still shows DB66 free and the new report block itself is <strong>'+report+' [DB66]</strong>. If DB66 has become occupied, stop and change both the PLC reservation and Kepware map rather than overwriting anything.',
+   'Keep the report DB standard/non-optimized and verify byte 0 is PreviousCycleSeconds and byte 44 is TotalCompleted. All 12 members are four bytes wide.',
+   'Create the Kepware tags under the '+m+' device with the exact DB66 item addresses below, Client access <strong>Read Only</strong>. Prove PreviousCycleSeconds against TIA before relying on the remaining tags.'
   )+
-  table(['Tag','Type','Byte'],[(code(n),t,str(o)) for n,t,o,_ in MM6_ROWS])+
-  '<p><a href="'+PTC+'" target="_blank" rel="noopener noreferrer">PTC standard S7 item syntax</a></p>')
+  address_table(66)+
+  '<p>Kepware Standard S7 DB syntax is <code>DB&lt;number&gt;,&lt;S7 type&gt;&lt;byte offset&gt;</code>. <a href="'+PTC+'" target="_blank" rel="noopener noreferrer">PTC standard S7 item syntax</a>.</p>')
 
 def mm6_site():
  return panel('field-mm6-site','MM6 field-confirmed reference for the next machines',
@@ -125,10 +129,10 @@ def finalize_site_notes(root=ROOT):
  assert [t['id'] for g in base['groups']+base['kepware'] for t in g['tasks']] == [t['id'] for g in d['groups']+d['kepware'] for t in g['tasks']]
  assert d['schema']==base['schema']
  txt=txt[:pos]+json.dumps(d,ensure_ascii=False).replace('</','<\\/')+txt[pos+n:]
- txt=re.sub(r'<span class="revision">.*?</span>','<span class="revision">29 Sep · MM6 proven / MM4–MM5 field guide</span>',txt,count=1)
+ txt=re.sub(r'<span class="revision">.*?</span>','<span class="revision">29 Sep · MM4/MM5 DB66 reserved</span>',txt,count=1)
  p.write_text(txt); (root/'content.json').write_text(json.dumps(d,ensure_ascii=False,indent=2))
- sw=root/'sw.js'; s=sw.read_text(); s=re.sub(r"const CACHE='[^']+';","const CACHE='machine-reporting-field-notes-v14-20260929';",s,count=1); sw.write_text(s)
- print('Added field-confirmed MM6 addresses and detailed MM4/MM5 clock/HMI commissioning notes.')
+ sw=root/'sw.js'; s=sw.read_text(); s=re.sub(r"const CACHE='[^']+';","const CACHE='machine-reporting-field-notes-v15-20260929';",s,count=1); sw.write_text(s)
+ print('Added field-confirmed MM6 addresses, reserved MM4/MM5 DB66 maps, and detailed clock/HMI commissioning notes.')
 
 def install(root=ROOT):
  root=Path(root); p=root/'build_html.py'; s=p.read_text()
