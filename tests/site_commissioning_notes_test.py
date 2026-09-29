@@ -20,6 +20,7 @@ for m in ('MM4','MM5'):
  ok(m+' includes template clock hunt',all(x in text for x in ['Screen management','Templates','Display system time','HMI time synchronization mode','DB_Uhrstellen']))
  ok(m+' includes field robot gate sources',all(x in text for x in ['I500.4','I500.5','I500.6','M50.2','M50.3','DB20.DBX0.1']))
  ok(m+' includes first-cycle known-idle arm behavior','known-idle startup arm' in text and 'first real cycle' in text)
+ ok(m+' reserves report DB66',all(x in text for x in ['DB66','reserved','CSI_Report_'+m]))
 
 mm6=next(x for x in d['groups'] if x['id']=='MM6')
 mm6text=json.dumps(mm6)
@@ -54,10 +55,14 @@ with sync_playwright() as pw:
  page.locator('#todo-K-MM4>summary').click()
  page.locator('#how-K-MM4-compact-tags>summary').click()
  box4=page.locator('#tag-map-MM4'); inp4=box4.locator('input[type=number]')
- ok('MM4 DB remains target-confirmed rather than copied from MM6',inp4.input_value()=='')
- inp4.fill('156');inp4.press('Tab')
+ ok('MM4 map defaults to reserved DB66',inp4.input_value()=='66')
  txt4=box4.inner_text()
- ok('MM4 map generates both full address forms',all(x in txt4 for x in ['%DB156.DBD0','DB156,REAL0','%DB156.DBD44','DB156,DINT44']))
+ ok('MM4 map spells out reserved DB66 in both address forms',all(x in txt4 for x in ['%DB66.DBD0','DB66,REAL0','%DB66.DBD44','DB66,DINT44','reserved']))
+ page.locator('#todo-K-MM5>summary').click()
+ page.locator('#how-K-MM5-compact-tags>summary').click()
+ box5=page.locator('#tag-map-MM5')
+ txt5=box5.inner_text()
+ ok('MM5 map also defaults to separately reserved DB66',box5.locator('input[type=number]').input_value()=='66' and all(x in txt5 for x in ['%DB66.DBD0','DB66,REAL0','%DB66.DBD44','DB66,DINT44']))
 
  page.get_by_role('button',name='MM4',exact=True).click()
  page.locator('#how-MM4-rollout-adapt>summary').click()
@@ -71,6 +76,6 @@ with sync_playwright() as pw:
  b.close()
 
 server.shutdown()
-result=dict(passed=len(checks),checks=checks,plc_tested=False,scope='Documentation/UI regression; field-confirmed MM6 address presentation and MM4/MM5 detailed commissioning notes.')
+result=dict(passed=len(checks),checks=checks,plc_tested=False,scope='Documentation/UI regression; MM6 DB56 confirmed, MM4/MM5 DB66 reserved, detailed commissioning notes.')
 (R/'tests/site_commissioning_notes_results.json').write_text(json.dumps(result,indent=2))
 print(json.dumps(result,indent=2))
