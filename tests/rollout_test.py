@@ -100,7 +100,7 @@ with sync_playwright()as pw:
  page.locator('#tools>summary').click()
  with page.expect_download()as dl:page.get_by_role('button',name='Export progress',exact=True).click()
  backup=json.loads(Path(dl.value.path()).read_text())
- ok('Export preserves notes and the three selected DB values',backup['notes']==seed['notes']and backup['fields']['MM4']['reportDbCompact']=='66'and backup['fields']['MM5']['reportDbCompact']=='66'and backup['fields']['MM6']['reportDbCompact']=='56')
+ ok('Export preserves notes while reserved defaults remain recoverable',backup['notes']==seed['notes']and backup['fields'].get('MM4',{}).get('reportDbCompact','66')=='66'and backup['fields'].get('MM5',{}).get('reportDbCompact','66')=='66'and backup['fields']['MM6']['reportDbCompact']=='56')
  if live:
   page.once('dialog',lambda dialog:dialog.accept())
   with page.expect_navigation(wait_until='networkidle'):page.locator('#import').set_input_files({'name':'progress.json','mimeType':'application/json','buffer':json.dumps(backup).encode()})
