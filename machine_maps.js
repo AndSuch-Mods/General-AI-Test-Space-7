@@ -4,7 +4,8 @@ function renderMap(){
     const box=$('#'+(machine==='MM6'?'tag-map':'tag-map-'+machine));
     if(!box)continue;
     const savedDb=state.fields[machine]?.reportDbCompact||'';
-    const db=savedDb||(machine==='MM6'?'56':'');
+    const reservedDb=machine==='MM6'?'56':((machine==='MM4'||machine==='MM5')?'66':'');
+    const db=savedDb||reservedDb;
     const valid=/^[0-9]+$/.test(db)&&Number(db)>=1&&Number(db)<=65535;
     const report='CSI_Report_'+machine;
     box.replaceChildren();
@@ -17,7 +18,7 @@ function renderMap(){
       const other=$('#field-'+machine+'-reportDbCompact');if(other)other.value=input.value;
       save();renderMap();
     });
-    box.append(e('p','muted',machine==='MM6'?'MM6 is field-confirmed as CSI_Report_MM6 [DB56]. The TIA absolute address and Kepware item address are both shown below.':(valid?'Verify the offsets in '+report+' on '+machine+'.':'Enter this machine’s confirmed reporting DB number. A different machine’s number is not reused.')));
+    box.append(e('p','muted',machine==='MM6'?'MM6 is field-confirmed as CSI_Report_MM6 [DB56]. The TIA absolute address and Kepware item address are both shown below.':((machine==='MM4'||machine==='MM5')?'DB66 is reserved for '+report+' after the project-wide DB66 search returned no matches on this machine. Create the report DB as DB66; if TIA later shows DB66 occupied, stop and change the reservation before downloading.':'Enter this machine’s confirmed reporting DB number.')));
     const wrap=e('div','table-wrap'),tab=e('table'),head=e('thead'),tr=e('tr');
     ['Tag','Type','Byte','TIA absolute','Kepware item'].forEach(v=>tr.append(e('th','',v)));head.append(tr);tab.append(head);
     const body=e('tbody');
