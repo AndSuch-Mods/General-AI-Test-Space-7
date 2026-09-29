@@ -71,8 +71,10 @@ new=""" page.locator('#inputs-MM6-valid>summary').click()
  mm5valid=page.locator('#inputs-MM5-valid').inner_text()
  ok('MM5 uses the same robot gate roles at the archived 500-series addresses',all(x in mm5valid for x in ['I500.4','I500.5','I500.6','AN    I500.6']))
  ok('No obsolete GET_DIAG construction is presented in the current input guide',page.locator('#inputs-MM6-diag-build').count()==0)"""
-assert old in s
-s=s.replace(old,new)
+if old in s:
+ s=s.replace(old,new)
+elif new not in s:
+ raise RuntimeError('input_notes_test.py is neither pre-patch nor already patched')
 s=s.replace("scope='Documentation/DOM checks; diagnostic mapping not hardware-tested.'","scope='Documentation/DOM checks; MM6 operational gate live-observed, MM4/MM5 archive-mapped but not live-verified.'")
 p.write_text(s)
 
