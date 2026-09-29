@@ -62,14 +62,14 @@ def donor_delta(m):
   )+
   '<p class="note">Copy the <strong>behavior</strong> only after the target CPU/instruction set is confirmed. MM4/MM5 may require a legacy implementation even when the machine sequence and HMI template are nearly identical.</p>')
 
-def kepware_mm(m):
+def kepware_mm(m,ident):
  report='CSI_Report_'+m
  if m=='MM6':
-  return panel('field-kepware-MM6','MM6 field-confirmed Kepware addresses — DB56',
+  return panel(ident,'MM6 field-confirmed Kepware addresses — DB56',
    '<p><strong>Confirmed from the running TIA watch table:</strong> '+code(report)+' = <strong>DB56</strong>. The TIA absolute address is shown beside the actual Kepware item string.</p>'+
    mm6_address_table()+
    '<p>Kepware Standard S7 DB syntax is <code>DB&lt;number&gt;,&lt;S7 type&gt;&lt;byte offset&gt;</code>. Keep all 12 tags <strong>Read Only</strong>. <a href="'+PTC+'" target="_blank" rel="noopener noreferrer">PTC standard S7 item syntax</a>.</p>')
- return panel('field-kepware-'+m,m+' Kepware: confirm the DB, then use the same 12 byte offsets',
+ return panel(ident,m+' Kepware: confirm the DB, then use the same 12 byte offsets',
   steps(
    'Open <strong>'+report+'</strong> in TIA and record the actual DB number assigned on this PLC. Do not reuse MM6 DB56 unless TIA on '+m+' actually says DB56.',
    'Verify byte 0 is PreviousCycleSeconds and byte 44 is TotalCompleted. All 12 members are four bytes wide in the compact layout.',
@@ -100,8 +100,9 @@ def apply_notes(data):
   if 'id="field-clock-'+m+'"' not in adapt['body']:
    adapt['body'] += clock_hmi(m)+donor_delta(m)
   report=next(t for t in g['tasks'] if t['id']==m+'-rollout-report')
-  if 'id="field-kepware-'+m+'"' not in report['body']:
-   report['body'] += kepware_mm(m)
+  report_marker='field-kepware-report-'+m
+  if 'id="'+report_marker+'"' not in report['body']:
+   report['body'] += kepware_mm(m,report_marker)
  mm6=next(x for x in d['groups'] if x['id']=='MM6')
  target=next(t for t in mm6['tasks'] if t['id']=='MM6-compact-call')
  if 'id="field-mm6-site"' not in target['body']:
@@ -109,9 +110,9 @@ def apply_notes(data):
  for m in ('MM4','MM5','MM6'):
   kg=next(x for x in d['kepware'] if x['id']=='K-'+m)
   kt=next(t for t in kg['tasks'] if t['id']=='K-'+m+'-compact-tags')
-  marker='field-kepware-'+m
+  marker='field-kepware-map-'+m
   if 'id="'+marker+'"' not in kt['body']:
-   kt['body'] += kepware_mm(m)
+   kt['body'] += kepware_mm(m,marker)
  d['field_notes_version']=BUILD
  return d
 
