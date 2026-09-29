@@ -1,14 +1,16 @@
 {
-  "passed": 21,
+  "passed": 24,
   "checks": [
     "Task count unchanged",
     "Twelve-field report schema unchanged",
     "MM4 includes template clock hunt",
     "MM4 includes field robot gate sources",
     "MM4 includes first-cycle known-idle arm behavior",
+    "MM4 reserves report DB66",
     "MM5 includes template clock hunt",
     "MM5 includes field robot gate sources",
     "MM5 includes first-cycle known-idle arm behavior",
+    "MM5 reserves report DB66",
     "MM6 site facts include DB56 and proven clock-template path",
     "All 42 tasks render",
     "All 66 authored MM6 reference networks remain",
@@ -16,13 +18,14 @@
     "No duplicate DOM IDs",
     "MM6 map defaults to field-confirmed DB56",
     "MM6 map spells out TIA absolute and Kepware items",
-    "MM4 DB remains target-confirmed rather than copied from MM6",
-    "MM4 map generates both full address forms",
+    "MM4 map defaults to reserved DB66",
+    "MM4 map spells out reserved DB66 in both address forms",
+    "MM5 map also defaults to separately reserved DB66",
     "MM4 detailed clock guide renders",
     "MM4 guide points to inherited template and display source",
     "Detailed panels stay within mobile width",
     "No browser script errors"
   ],
   "plc_tested": false,
-  "scope": "Documentation/UI regression; field-confirmed MM6 address presentation and MM4/MM5 detailed commissioning notes."
+  "scope": "Documentation/UI regression; MM6 DB56 confirmed, MM4/MM5 DB66 reserved, detailed commissioning notes."
 }
