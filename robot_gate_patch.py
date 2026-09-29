@@ -40,12 +40,12 @@ diag=r'''def diag(m):
  base='700'if m=='MM6'else'500'
  t='CSI_RobotDataValid_'+m
  live_note=('<strong>MM6 live check passed:</strong> I700.4 / I700.5 / I700.6 stayed TRUE / TRUE / FALSE through a complete normal cycle.'if m=='MM6'else'<strong>'+m+' archive mapping:</strong> I500.4 = AutoOn, I500.5 = RunChainOK, I500.6 = ExecutionError. Confirm TRUE / TRUE / FALSE through a real cycle before the live download.')
- return '<p>'+live_note+'</p>'+steps(
+ return ('<p>'+live_note+'</p>'+steps(
   'In <strong>OB1 → upper declaration grid → Temp</strong>, append Name = '+code(t)+', Data type = <strong>Bool</strong>. Do not add this to CSI_Report.',
   'Immediately before the CSI reporting CALL, add the four-line STL expression below. It reads the existing robot-status inputs and writes only the new OB1 Temp bit.',
   'Connect <strong>RobotDataValid := '+code('#'+t)+'</strong> on the reporting CALL.',
   'Before commissioning '+m+', watch the three source inputs through a normal robot cycle. They must remain AutoOn TRUE, RunChainOK TRUE and ExecutionError FALSE. If not, stop and revise this reporting gate.')+pre('CLR\\nA     I'+base+'.4\\nA     I'+base+'.5\\nAN    I'+base+'.6\\n=     #'+t)+
- '<p class="note">This is a <strong>practical robot-operational gate</strong>, not a dedicated PROFINET data-quality bit. It prevents counting while the robot is out of Auto, its run chain is not OK, or it reports an execution error. It does not prove a part was picked or that every network packet is fresh.</p>'
+ '<p class="note">This is a <strong>practical robot-operational gate</strong>, not a dedicated PROFINET data-quality bit. It prevents counting while the robot is out of Auto, its run chain is not OK, or it reports an execution error. It does not prove a part was picked or that every network packet is fresh.</p>')
 
 def body(m):'''
 s=re.sub(r'def diag\(m\):.*?\ndef body\(m\):',diag,s,flags=re.S)
