@@ -117,7 +117,7 @@ def apply_notes(data):
  return d
 
 def finalize_site_notes(root=ROOT):
- if os.environ.get('CSI_SKIP_SITE_NOTES')=='1': return
+ if os.environ.get('CSI_SKIP_SITE_NOTES')=='1' or os.environ.get('CSI_SKIP_ROLLOUT')=='1': return
  root=Path(root); p=root/'index.html'; txt=p.read_text()
  pos=txt.index('const DATA=')+len('const DATA=')
  base,n=json.JSONDecoder().raw_decode(txt[pos:])
