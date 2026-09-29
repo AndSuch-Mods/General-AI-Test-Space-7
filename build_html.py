@@ -38,3 +38,6 @@ finalize_rollout(R)
 
 from input_notes import finalize_inputs
 finalize_inputs(R)
+
+from site_commissioning_notes import finalize_site_notes
+finalize_site_notes(R)

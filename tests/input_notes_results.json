@@ -1,15 +1,15 @@
 {
-  "passed": 25,
+  "passed": 27,
   "checks": [
     "Applying notes twice does not duplicate them",
     "MM4 contains exact production-mode and reset source addresses",
-    "MM4 distinguishes an unresolved existing RobotDataValid mapping",
+    "MM4 contains the practical robot operational gate addresses",
     "MM4 explains all five input meanings",
     "MM5 contains exact production-mode and reset source addresses",
-    "MM5 distinguishes an unresolved existing RobotDataValid mapping",
+    "MM5 contains the practical robot operational gate addresses",
     "MM5 explains all five input meanings",
     "MM6 contains exact production-mode and reset source addresses",
-    "MM6 distinguishes an unresolved existing RobotDataValid mapping",
+    "MM6 contains the practical robot operational gate addresses",
     "MM6 explains all five input meanings",
     "Existing twelve report members and offsets unchanged",
     "No permanent-TRUE data-valid recipe is presented",
@@ -20,8 +20,10 @@
     "MM5 has one definition table with five rows",
     "MM6 has one definition table with five rows",
     "OB1 TEMP declaration and OR expression are visible",
-    "Read-only diagnostic is conditional on actual hardware confirmation",
-    "Diagnostic recipe requires successful return and Good bit",
+    "MM6 operational gate shows the watched robot states and STL expression",
+    "MM4 uses the same robot gate roles at the archived 500-series addresses",
+    "MM5 uses the same robot gate roles at the archived 500-series addresses",
+    "No obsolete GET_DIAG construction is presented in the current input guide",
     "No duplicate element IDs",
     "Expanded instructions stay within mobile page width",
     "No browser script errors",
@@ -29,5 +31,5 @@
   ],
   "live_browser": true,
   "plc_tested": false,
-  "scope": "Documentation/DOM checks; diagnostic mapping not hardware-tested."
+  "scope": "Documentation/DOM checks; MM6 operational gate live-observed, MM4/MM5 archive-mapped but not live-verified."
 }

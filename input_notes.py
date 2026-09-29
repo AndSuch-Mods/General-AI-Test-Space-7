@@ -3,7 +3,7 @@ from pathlib import Path
 from html import escape
 import copy, hashlib, json, os, re
 ROOT=Path(__file__).parent
-BUILD='2026-09-28-input-sources-v12'
+BUILD='2026-09-28-robot-operational-gates-v13'
 DIAG_URL='https://docs.tia.siemens.cloud/r/en-us/v20/extended-instructions-s7-1200-s7-1500/diagnostics-s7-1200-s7-1500/get_diag-read-diagnostic-information-s7-1200-s7-1500'
 EVIDENCE='https://github.com/AndSuch-Mods/General-AI-Test-Space-7/blob/main/input_mapping_evidence.md'
 def code(s):return '<code>'+escape(str(s))+'</code>'
@@ -13,34 +13,40 @@ def steps(*xs):return '<ol>'+''.join('<li>'+x+'</li>'for x in xs)+'</ol>'
 def pre(s):return '<pre>'+escape(s)+'</pre>'
 def definitions(m):
  end='DB94.DBX29.6'if m=='MM6'else'DB94.DBX29.4'
+ if m=='MM6':
+  valid=code('I700.4')+' AutoOn AND '+code('I700.5')+' RunChainOK AND NOT '+code('I700.6')+' ExecutionError. <strong>Observed live as TRUE / TRUE / FALSE through a complete normal MM6 cycle.</strong> This is a practical robot-operational reporting gate, not a PROFINET quality bit.'
+ else:
+  valid=code('I500.4')+' AutoOn AND '+code('I500.5')+' RunChainOK AND NOT '+code('I500.6')+' ExecutionError. These exact roles are present in the supplied MM4/MM5 reference archive. Watch TRUE / TRUE / FALSE through a normal cycle before using the gate live.'
  return '<p><strong>The left-hand names are our FB inputs, not existing German tags.</strong> The right-hand side is the machine bit or calculated value you connect. These inputs only affect reporting; AbortCycle does not abort the machine.</p>'+table([
  ('CloseCommand','Mold closing is commanded.',code('DB98.DBX112.7')+'; candidate checked in the supplied archive.'),
  ('RobotPermit','The robot interface permits mold closing.',code(end)+'; time the low-to-high return, not an already-high input at startup.'),
  ('ProductionEligible','This operating mode is production we intend to count.',code('M50.2')+' = semiautomatic; '+code('M50.3')+' = automatic. Proposed rule: either is TRUE. See the small OB1 expression below.'),
- ('RobotDataValid','The observed robot inputs are available and trustworthy.','<strong>No existing one-bit source verified.</strong> Not the same as RobotPermit or RunChainOK. MM6 has a candidate read-only module-diagnostic route below; legacy MM4/MM5 needs its own diagnostic mapping.'),
- ('AbortCycle','Discard the unfinished measurement because a reset/cancel applies.',code('DB20.DBX0.1')+' = class-1 immediate-stop fault used in the original sequencer-reset logic. This covers that reset source, not every possible robot cancel.')])+('<p class="muted">Sources: PF1000825 MM6 archive. These are offline findings; confirm the current project matches.</p>'if m=='MM6'else'<p class="muted">Sources: PF1000723, the supplied MM4/MM5 reference archive. MM5 is expected to duplicate MM4, but this is not a live verification of either CPU. MM4 previously displayed a different project name.</p>')
+ ('RobotDataValid','The robot is in its expected operating state for this reporting observation.',valid),
+ ('AbortCycle','Discard the unfinished measurement because a reset/cancel applies.',code('DB20.DBX0.1')+' = class-1 immediate-stop fault used in the original sequencer-reset logic. This covers that reset source, not every possible robot cancel.')])+('<p class="muted">Sources: PF1000825 MM6 archive plus the live MM6 watch observation. The three robot-status bits are an operational-health gate, not a dedicated network-quality diagnostic.</p>'if m=='MM6'else'<p class="muted">Sources: PF1000723, the supplied MM4/MM5 reference archive. The archive maps I500.4/5/6 to AutoOn / RunChainOK / ExecutionError. Confirm the same live behavior on the actual machine before commissioning.</p>')
+
 def production(m):
  t='CSI_ProductionEligible_'+m
  return steps('In <strong>OB1 → upper declaration grid → Temp</strong>, append one new row at the <strong>end</strong>: Name = '+code(t)+', Data type = <strong>Bool</strong>. Do not insert it above existing Temp declarations or add it to the reporting DB.',
  'Immediately before your existing CSI CALL in the new STL network, enter the four lines below. They only read M50.2/M50.3 and write the new local result.',
  'Set the call input <strong>ProductionEligible := '+code('#'+t)+'</strong>. Do not type “M50.2 OR M50.3” directly into the actual-parameter field.')+pre('CLR\nO     M50.2\nO     M50.3\n=     #'+t)+'<p><strong>Policy:</strong> semiautomatic plus automatic production. Manual individual operation (M50.0), manual stepping (M50.1), preheat and tool change are excluded. For automatic-only production, M50.3 alone can feed ProductionEligible. Do not change the machine mode bits to satisfy the observer.</p>'
 def watch(m):
- return steps('In the existing watch table, add these read-only rows: '+code('M50.2')+', '+code('M50.3')+', '+code('DB20.DBX0.1')+'. Leave Modify value blank.',
- 'Automatic mode should show M50.3 TRUE; semiautomatic should show M50.2 TRUE. DB20.DBX0.1 should normally be FALSE without a class-1 stop fault. Observe with the operator; do not create a stop or force these bits.',
- 'If the live mode or reset behavior disagrees, keep the mapping unapproved and send the readings. You do not need to search German function blocks yourself.')
+ robot=('I700.4','I700.5','I700.6')if m=='MM6'else('I500.4','I500.5','I500.6')
+ return steps('In the existing watch table, add these read-only rows: '+code('M50.2')+', '+code('M50.3')+', '+code('DB20.DBX0.1')+', '+code(robot[0])+', '+code(robot[1])+', '+code(robot[2])+'. Leave Modify value blank.',
+ 'Automatic mode should show M50.3 TRUE; semiautomatic should show M50.2 TRUE. DB20.DBX0.1 should normally be FALSE without a class-1 stop fault.',
+ 'For the robot operational gate, expect AutoOn = TRUE, RunChainOK = TRUE and ExecutionError = FALSE through the complete normal cycle. MM6 has already been observed doing this; MM4/MM5 still need the same live check before commissioning.',
+ 'If any of those robot-status bits normally changes during the cycle, do not use the proposed RobotDataValid expression unchanged. Record the states/timestamps and revise the gate. Never force these bits.')
+
 def diag(m):
- if m!='MM6':
-  return '<p><strong>Still unresolved for '+m+': the exact RobotDataValid operand.</strong> The legacy reference reads PROFINET system status using RDSYSST in FC20; RET_VAL is DB7.DBW0 and BUSY is DB7.DBX2.0. Neither alone proves the robot data are valid. The robot station entry and the diagnostic completion/freshness handling must be identified.</p><p>Do not substitute MM6 hardware ID 302, guess an I500.x address, or use a constant TRUE. Once the working MM4 diagnostic mapping is verified, copy that target-compatible method to MM5. Until then, this is a pending commissioning item, not a finished call.</p>'
- return '<p><strong>No single existing RobotDataValid bit was found.</strong> I700.5 is RunChainOK, I700.4 is robot auto mode, and I700.6 is ExecutionError. None proves PROFINET input quality. The robot’s OK_ToStart also requires motors off, so it is unsuitable while running.</p>'+steps(
- 'In TIA <strong>Devices & networks → Network view</strong>, select the ABB robot station, named <strong>RobotBasicIO</strong> in the supplied archive. Open <strong>Device view → Device overview</strong>. Find its <strong>DI 32 bytes</strong> input module. Confirm that its input-address range includes <strong>I705.7</strong>. Do not edit its addresses or configuration.',
- 'Under the MM6 CPU, open <strong>PLC tags → Show all tags → System constants</strong>. The archive contains '+code('RobotBasicIO~DI_32_bytes_1')+' of type HW_SUBMODULE, value <strong>302</strong>. Use the current matching symbolic constant, not a guessed number. If the names/addresses differ, capture this screen for review.',
- '<strong>Only after that match:</strong> a new read-only GET_DIAG MODE 1 query on that input submodule can produce the reporting qualification. This is additional OB1 input preparation, not an edit to your 66 FB networks. Compile/support and live Good-status checks are still required.')+panel('inputs-MM6-diag-build','After hardware confirmation: build the small read-only diagnostic',
- '<p>Append these variables under <strong>OB1 → Temp</strong>: '+code('CSI_RobotDiag_MM6')+' / <strong>DIS</strong>; '+code('CSI_RobotDiagStatus_MM6')+' / <strong>Int</strong>; '+code('CSI_RobotDiagCount_MM6')+' / <strong>UInt</strong>; '+code('CSI_RobotDataValid_MM6')+' / <strong>Bool</strong>. DIS is Siemens’ system data type; its nested fields are supplied by TIA.</p>'+steps(
- 'Before the reporting CALL, use the Instructions pane to insert <strong>GET_DIAG</strong> in the STL editor and let TIA generate its formal parameters. Call it every scan, not conditionally behind a machine-running bit.',
- 'Connect MODE = '+code('UINT#1')+'; LADDR = the <strong>verified</strong> input-submodule system constant; RET_VAL = '+code('#CSI_RobotDiagStatus_MM6')+'; CNT_DIAG = '+code('#CSI_RobotDiagCount_MM6')+'; DIAG = '+code('#CSI_RobotDiag_MM6')+'. Do not use the hidden DETAIL parameter.',
- 'After the diagnostic call, and before the reporting call, enter the expression below. A failed diagnostic read cannot qualify the data because RET_VAL must equal zero.',
- 'Then connect <strong>RobotDataValid := '+code('#CSI_RobotDataValid_MM6')+'</strong> on your existing reporting call. With the hardware healthy, require status 0 and IOState Good bit TRUE. Do not force a test value if they disagree.')+pre('L     #CSI_RobotDiagStatus_MM6\nL     0\n==I\nA     #CSI_RobotDiag_MM6.IOState.%X0\n=     #CSI_RobotDataValid_MM6')+
- '<p class="note">Proposed module-health qualification, not hardware-tested code. It cannot prove the robot application is advancing or that a part was picked. Confirm the actual I/O mapping and installed instruction support before loading. GET_DIAG only reads hardware status and writes these new local variables.</p><p><a href="'+DIAG_URL+'" target="_blank" rel="noopener noreferrer">Siemens GET_DIAG: DIS structure, return status and IOState Good bit</a></p>')
+ base='700'if m=='MM6'else'500'
+ t='CSI_RobotDataValid_'+m
+ live_note=('<strong>MM6 live check passed:</strong> I700.4 / I700.5 / I700.6 stayed TRUE / TRUE / FALSE through a complete normal cycle.'if m=='MM6'else'<strong>'+m+' archive mapping:</strong> I500.4 = AutoOn, I500.5 = RunChainOK, I500.6 = ExecutionError. Confirm TRUE / TRUE / FALSE through a real cycle before the live download.')
+ return ('<p>'+live_note+'</p>'+steps(
+  'In <strong>OB1 → upper declaration grid → Temp</strong>, append Name = '+code(t)+', Data type = <strong>Bool</strong>. Do not add this to CSI_Report.',
+  'Immediately before the CSI reporting CALL, add the four-line STL expression below. It reads the existing robot-status inputs and writes only the new OB1 Temp bit.',
+  'Connect <strong>RobotDataValid := '+code('#'+t)+'</strong> on the reporting CALL.',
+  'Before commissioning '+m+', watch the three source inputs through a normal robot cycle. They must remain AutoOn TRUE, RunChainOK TRUE and ExecutionError FALSE. If not, stop and revise this reporting gate.')+pre('CLR\nA     I'+base+'.4\nA     I'+base+'.5\nAN    I'+base+'.6\n=     #'+t)+
+ '<p class="note">This is a <strong>practical robot-operational gate</strong>, not a dedicated PROFINET data-quality bit. It prevents counting while the robot is out of Auto, its run chain is not OK, or it reports an execution error. It does not prove a part was picked or that every network packet is fresh.</p>')
+
 def body(m):
  return '<section id="input-guide-'+m+'">'+definitions(m)+panel('inputs-'+m+'-production','ProductionEligible: exact mode bits and OB1 entry',production(m))+panel('inputs-'+m+'-abort','AbortCycle: use the class-1 reset source, not an ordinary stop',
  '<p>The supplied program reads '+code('DB20.DBX0.1')+' in <strong>FC40, network 14</strong> to reset the sequencer. Its MM6 name is '+code('DB Störungen.Klasse_1_NotStop')+'. The same address appears in the first MM4/MM5 archive.</p><p>For that defined cancellation case, connect <strong>AbortCycle := '+code('DB20.DBX0.1')+'</strong>. This is a read of a standard fault flag, not a safety function or an output to the machine.</p><p>It does not cover every robot restart/cancel. Do not replace it with NOT M40.4, a generic warning, a motor-off bit, or the whole sequencer-reset expression: normal pauses/end-of-cycle processing could then erase the wait you want to measure.</p>')+panel('inputs-'+m+'-valid','RobotDataValid: what is still needed',diag(m))+panel('inputs-'+m+'-watch','Check these three known source bits',watch(m))+'<p class="muted"><a href="'+EVIDENCE+'" target="_blank" rel="noopener noreferrer">Archive evidence, English translations and remaining limits</a>. The current call is not ready for service until its data-valid mapping is confirmed. No existing bit is forced, and the report layout and existing ladder networks stay unchanged.</p></section>'
@@ -64,9 +70,9 @@ def finalize_inputs(root=ROOT):
  assert before['tasks'][:7]==after['tasks'][:7], 'Completed work or timing/counting sections changed'
  assert [t['id']for g in original['groups']for t in g['tasks']]==[t['id']for g in d['groups']for t in g['tasks']]
  text=text[:pos]+json.dumps(d,ensure_ascii=False).replace('</','<\\/')+text[pos+n:]
- text=re.sub(r'<span class="revision">.*?</span>','<span class="revision">28 Sep · input meanings</span>',text,count=1)
+ text=re.sub(r'<span class="revision">.*?</span>','<span class="revision">28 Sep · robot gate</span>',text,count=1)
  p.write_text(text);(root/'content.json').write_text(json.dumps(d,ensure_ascii=False,indent=2))
- sw=root/'sw.js';s=sw.read_text();s=re.sub(r"const CACHE='[^']+';","const CACHE='machine-reporting-input-notes-v12-20260928';",s,count=1);sw.write_text(s)
+ sw=root/'sw.js';s=sw.read_text();s=re.sub(r"const CACHE='[^']+';","const CACHE='machine-reporting-robot-gate-v13-20260928';",s,count=1);sw.write_text(s)
  print('Added evidence-backed input notes: core networks, report layout, task IDs and saved data unchanged.')
 
 def install(root=ROOT):

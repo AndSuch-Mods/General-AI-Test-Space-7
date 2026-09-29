@@ -51,25 +51,37 @@ The first archive's FC40 saved network 14, object 463335, offset 4514608, begins
 
 DB20.DBX0.2 is `Klasse_2_SK_Steh` (class-2 sequencer standstill); DB20.DBX0.3 is `Klasse_3_kein_Neustart` (class-3 inhibit new start). FC40 network 7 resets M40.4 `Automat_Start` for several conditions. Therefore NOT M40.4, every warning, and ordinary waiting are not substitutes for a cycle-cancel input. Do not use the whole `SchaltwerkReset` expression as AbortCycle without review: it also includes normal end-of-sequence handling.
 
-## RobotDataValid: no existing one-bit mapping has been verified
+## RobotDataValid: practical robot-operational gate
 
-MM6 FC900 `RobotMain` network 2 connects these input statuses to FB900 `ABB_Controller`, instance DB900:
+The reporting input name RobotDataValid is being used as a practical robot-operational qualification, not as a claim of PROFINET packet-quality or submodule diagnostic health.
 
-| Address | Existing pin | Meaning |
+MM6 uses these existing robot statuses:
+
+| Address | Existing name | Meaning |
 |---|---|---|
 | I700.4 | AutoOn | Robot automatic-mode status |
 | I700.5 | RunChainOK | Robot run-chain status |
 | I700.6 | ExecutionError | Robot program execution error |
 
-None of these is a proven PROFINET input-data-valid bit. FB900's OK_ToStart expression also requires the motors-off state, so it is not a valid always-needed qualification while a normal cycle runs.
+On 28 September 2026 these MM6 values were observed live as TRUE / TRUE / FALSE through a complete normal robot cycle. The reporting gate used for MM6 is:
 
-MM6 has a cyclic DeviceStates call in FC10 network 16 (object 427941, offset 15119181), MODE 5, LADDR 257. Its status return is a local temporary variable. The presence of that call or a zero in its stored bit array is not, by itself, a verified continuously successful robot-specific quality result.
+    RobotDataValid = I700.4 AND I700.5 AND NOT I700.6
 
-The archive's hardware metadata contains system constant `RobotBasicIO~DI_32_bytes_1`, type HW_SUBMODULE, value 302 (object 477385), attached to the ABB robot DI 32-byte submodule. It also contains `RobotBasicIO~IODevice` HW_DEVICE 314 and `Local~PROFINET_IO-System` HW_IOSYSTEM 257. These are candidates for a new read-only diagnostic query, not permission to assume the current hardware IDs or I/O address mapping. Confirm in the current device overview that the selected DI module includes I705.7 before using it.
+The supplied PF1000723 MM4/MM5 reference archive contains the same three roles at the 500-series robot input addresses. Its HMI tag map identifies:
 
-A possible MM6 implementation is GET_DIAG MODE 1 on that verified input-submodule system constant, with a DIS result. Accept data only when the call returns 0 and the DIS IOState Good bit is set. This reads transport/module health; it does not prove the robot's application task is advancing or that a part was picked. This additional query has not been compiled or tested here. It belongs before the reporting FB call and writes only new local diagnostic variables.
+| Address | Existing name | Meaning |
+|---|---|---|
+| I500.4 | AutoOn | Robot automatic-mode status |
+| I500.5 | RunChainOK | Robot run-chain status |
+| I500.6 | ExecutionError | Robot program execution error |
 
-The legacy reference uses RDSYSST in FC20 (SZL_ID 16#0694, INDEX 16#0064, RET_VAL DB7.DBW0, BUSY DB7.DBX2.0, data buffer DB7). The particular robot station entry, return/busy handling and freshness have not been established. Do not copy MM6 hardware ID 302, use I500.x by analogy, or label RunChainOK as data-valid on MM4/MM5. Their exact RobotDataValid operand is still unresolved.
+FC17 saved network 2 connects I500.4 / I500.5 / I500.6 into the legacy ABB controller call (FB2 / DB65), so these addresses are supported by the archive rather than inferred only from the MM6 offset. The proposed MM4/MM5 reporting gate is:
+
+    RobotDataValid = I500.4 AND I500.5 AND NOT I500.6
+
+MM4 and MM5 still require a live watch before commissioning: AutoOn and RunChainOK should remain TRUE and ExecutionError should remain FALSE through a normal cycle. If that waveform differs, revise the reporting gate rather than forcing any input.
+
+This gate does not prove the robot picked a part, does not prove every communications packet is fresh, and is not a safety function. It only prevents the reporting observer from accepting events while the robot is out of Auto, its run chain is not OK, or the controller reports an execution error.
 
 ## Provenance
 
